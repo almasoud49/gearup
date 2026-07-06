@@ -1,0 +1,19 @@
+model Payment {
+  id               String          @id @default(cuid())
+  transactionId    String          @unique
+  amount           Float
+  method           PaymentMethod
+  status           PaymentStatus   @default(PENDING)
+  paidAt           DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  rentalOrderId    String          @unique
+
+  rentalOrder      RentalOrder     @relation(fields: [rentalOrderId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentMethod {
+  STRIPE
+  SSLCOMMERZ
+}
