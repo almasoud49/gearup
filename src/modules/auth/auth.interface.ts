@@ -3,7 +3,7 @@ export type TLoginUser = {
     password: string;
 };
 
-export type TAuthResponse = {
+export type TLoginResponse = {
     id: string;
     name: string;
     email: string;
@@ -11,4 +11,9 @@ export type TAuthResponse = {
     isSuspended: boolean;
     createdAt: Date;
     updatedAt: Date;
+};
+
+export type TAuthResponse = {
+    token: string;
+    user: TLoginResponse;
 };
