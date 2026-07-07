@@ -1,16 +1,14 @@
-import { Role } from "../../../generated/prisma/enums";
-
-// User registration payload
-export type TUserRegistration = {
-  name: string;
-  email: string;
-  password: string;
-  role: 'CUSTOMER' | 'PROVIDER';
+export type TLoginUser = {
+    email: string;
+    password: string;
 };
 
-// User filters for admin
-export type TUserFilters = {
-  role?: Role;
-  isSuspended?: boolean;
-  searchTerm?: string;
+export type TAuthResponse = {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    isSuspended: boolean;
+    createdAt: Date;
+    updatedAt: Date;
 };

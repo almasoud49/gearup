@@ -1,46 +1,36 @@
+import bcrypt from "bcryptjs";
+import { TLoginUser } from "./auth.interface";
+import AppError from "../../errors/AppError";
 import { prisma } from "../../lib/prisma";
-import { TUserRegistration } from "./auth.interface"
 
-const registerUserIntoDB = async(payload: TUserRegistration)=>{
-    const { name, email, password, role } = payload;
+const loginUser = async (payload: TLoginUser) => {
+    const { email, password } = payload;
+
+    // Find user by email
+    const user = await prisma.user.findUnique({
+        where: { email },
+    });
+
+    if (!user) {
+        throw new AppError(404, 'User not found!');
+    }
+
+    // Check if user is suspended
+    if (user.isSuspended) {
+        throw new AppError(403, 'Your account has been suspended! Please contact admin.');
+    }
+
+    // Compare password with hashed password
+    const isPasswordMatched = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordMatched) {
+        throw new AppError(401, 'Invalid credentials!');
+    }
+
     
-    // Check if user already exists
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (existingUser) {
-    throw new Error('User already exists with this email!');
-  }
-
-  // Create the user with plain password (no hashing)
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password, 
-      role,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isSuspended: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  return user;
+    return user;
 };
 
-
-
-
-
-
 export const authService = {
-    registerUserIntoDB
-
-}
+    loginUser,
+};
