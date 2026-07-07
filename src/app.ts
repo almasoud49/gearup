@@ -6,6 +6,7 @@ import { userRoutes } from "./modules/user/user.route";
 import { authRoutes } from "./modules/auth/auth.route";
 import { categoryRoutes } from "./modules/category/category.route";
 import { gearRoutes } from "./modules/gear/gear.route";
+import { rentalRoutes } from "./modules/rental/rental.route";
 
 const app : Application = express();
 
@@ -24,6 +25,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use('/api/gear', gearRoutes); 
+app.use('/api/rentals', rentalRoutes);
 
 app.get("/",(req : Request, res : Response) => {
     res.send("Welcome to my gearup web application.");
