@@ -5,7 +5,7 @@ import config from "../../config";
 
 
 const registerUserIntoDB = async(payload: TUserRegistration)=>{
-    const { name, email, password, role } = payload;
+  const { name, email, password, role } = payload;
     
   const existingUser = await prisma.user.findUnique({
     where: { email },
