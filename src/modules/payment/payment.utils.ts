@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { prisma } from "../../lib/prisma";
 
+
 export const handleCheckoutCompleted = async (session: Stripe.Checkout.Session) => {
     console.log('Checkout Session Completed:', session.id);
 
@@ -13,7 +14,7 @@ export const handleCheckoutCompleted = async (session: Stripe.Checkout.Session) 
         return;
     }
 
-    try {      
+    try {        
         const payment = await prisma.payment.update({
             where: { transactionId: session.id },
             data: {
@@ -24,19 +25,17 @@ export const handleCheckoutCompleted = async (session: Stripe.Checkout.Session) 
             },
         });
 
-        console.log('Payment updated:', payment.id);
+        console.log(' Payment updated:', payment.id);
        
         await prisma.rentalOrder.update({
             where: { id: rentalOrderId },
             data: { status: 'PAID' },
         });
 
-        console.log('Rental order updated to PAID:', rentalOrderId);
-
-        return { success: true, payment };
+        console.log(' Rental order updated to PAID:', rentalOrderId);
 
     } catch (error) {
-        console.error('Error processing checkout completion:', error);
+        console.error(' Error processing checkout completion:', error);
         throw error;
     }
 };
@@ -52,7 +51,7 @@ export const handlePaymentIntentSucceeded = async (paymentIntent: Stripe.Payment
     }
 
     try {
-        const payment = await prisma.payment.update({
+        await prisma.payment.update({
             where: { transactionId: paymentIntent.id },
             data: {
                 status: 'COMPLETED',
@@ -67,32 +66,7 @@ export const handlePaymentIntentSucceeded = async (paymentIntent: Stripe.Payment
             data: { status: 'PAID' },
         });
 
-        console.log('Payment and rental updated');
-        return { success: true, payment };
-
-    } catch (error) {
-        console.error(' Error:', error);
-        throw error;
-    }
-};
-
-export const handlePaymentIntentFailed = async (paymentIntent: Stripe.PaymentIntent) => {
-    console.log(' Payment Intent Failed:', paymentIntent.id);
-
-    const rentalOrderId = paymentIntent.metadata?.rentalOrderId;
-
-    if (!rentalOrderId) {
-        console.log(" Missing rental order ID");
-        return;
-    }
-
-    try {
-        await prisma.payment.update({
-            where: { transactionId: paymentIntent.id },
-            data: { status: 'FAILED' },
-        });
-
-        console.log(' Payment marked as FAILED');
+        console.log('✅ Payment and rental updated');
 
     } catch (error) {
         console.error(' Error:', error);

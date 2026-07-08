@@ -76,3 +76,5 @@ export const auth = (...requiredRoles: Role[]) => {
         next();
     });
 };
+export { Role };
+

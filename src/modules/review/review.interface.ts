@@ -1,6 +1,3 @@
-import { GearItem, Review, User } from "../../../generated/prisma/client";
-
-
 export type TReview = {
     rating: number;
     comment?: string;
@@ -13,9 +10,4 @@ export type TReviewFilters = {
     gearItemId?: string;
     customerId?: string;
     searchTerm?: string;
-};
-
-export type TReviewWithRelations = Review & {
-    customer: User;
-    gearItem: GearItem;
 };

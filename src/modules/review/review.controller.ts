@@ -1,35 +1,114 @@
 import { Request, Response } from "express";
+import httpStatus from "http-status";
 import { catchAsync } from "../../utils/catchAsync";
-import AppError from "../../errors/AppError";
-import { reviewService } from "./review.service";
 import { sendResponse } from "../../utils/sendResponse";
+import { reviewService } from "./review.service";
+import { pick } from "../../utils/pick";
+import AppError from "../../errors/AppError";
 
 const createReview = catchAsync(async (req: Request, res: Response) => {
-    console.log('📝 Public Request Body:', req.body);
-
-    if (!req.body || Object.keys(req.body).length === 0) {
-        throw new AppError(400, 'Request body is empty! Please send data in JSON format.');
+    if (!req.user) {
+        throw new AppError(401, 'You are not authorized!');
     }
 
-    if (!req.body.rating) {
-        throw new AppError(400, 'Rating is required!');
-    }
-    if (!req.body.gearItemId) {
-        throw new AppError(400, 'Gear item ID is required!');
-    }
+    const payload = {
+        ...req.body,
+        customerId: req.user.id,
+    };
 
-    const review = await reviewService.createReview(req.body);
+    const review = await reviewService.createReviewIntoDB(payload);
 
     sendResponse(res, {
         success: true,
-        statusCode: 201,
-        message: 'Review created successfully! (Public - Testing Only)',
+        statusCode: httpStatus.CREATED,
+        message: "Review created successfully!",
+        data: review,
+    });
+});
+
+const getAllReviews = catchAsync(async (req: Request, res: Response) => {
+    const rawFilters = pick(req.query, ['rating', 'gearItemId', 'customerId', 'searchTerm']);
+    
+    const filters: any = {
+        rating: rawFilters.rating ? Number(rawFilters.rating) : undefined,
+        gearItemId: rawFilters.gearItemId as string | undefined,
+        customerId: rawFilters.customerId as string | undefined,
+        searchTerm: rawFilters.searchTerm as string | undefined,
+    };
+
+    const reviews = await reviewService.getAllReviewsFromDB(filters);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Reviews retrieved successfully!",
+        data: reviews,
+    });
+});
+
+const getReviewById = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const review = await reviewService.getReviewByIdFromDB(id as string);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Review retrieved successfully!",
         data: review,
     });
 });
 
 
+const getGearReviews = catchAsync(async (req: Request, res: Response) => {
+    const { gearId } = req.params;
+    const result = await reviewService.getGearReviewsFromDB(gearId as string);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Gear reviews retrieved successfully!",
+        data: result,
+    });
+});
+
+
+const updateReview = catchAsync(async (req: Request, res: Response) => {
+    if (!req.user) {
+        throw new AppError(401, 'You are not authorized!');
+    }
+
+    const { id } = req.params;
+    const review = await reviewService.updateReviewIntoDB(id as string, req.body, req.user.id, req.user.role);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Review updated successfully!",
+        data: review,
+    });
+});
+
+const deleteReview = catchAsync(async (req: Request, res: Response) => {
+    if (!req.user) {
+        throw new AppError(401, 'You are not authorized!');
+    }
+
+    const { id } = req.params;
+    await reviewService.deleteReviewFromDB(id as string, req.user.id, req.user.role);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Review deleted successfully!",
+        data: null,
+    });
+});
 
 export const reviewController = {
-    createReview
-}
+    createReview,
+    getAllReviews,
+    getReviewById,
+    getGearReviews,
+    updateReview,
+    deleteReview,
+};

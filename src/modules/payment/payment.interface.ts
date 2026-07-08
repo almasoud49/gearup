@@ -1,13 +1,10 @@
-
 export type TCreatePayment = {
     rentalOrderId: string;
-    paymentMethod?: string; 
 };
 
 export type TConfirmPayment = {
     paymentIntentId: string;
 };
-
 
 export type TPaymentResponse = {
     clientSecret?: string;
@@ -29,7 +26,6 @@ export type TConfirmPaymentResult = {
     message: string;
     status: string;
 };
-
 
 export type TPaymentHistoryItem = {
     id: string;
@@ -63,12 +59,3 @@ export type TPaymentHistoryItem = {
         };
     };
 };
-
-export type TPaymentHistoryResponse = TPaymentHistoryItem[];
-
-
-export type TWebhookPayload = {
-    payload: Buffer;
-    signature: string;
-};
-

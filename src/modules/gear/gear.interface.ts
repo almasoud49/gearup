@@ -1,6 +1,3 @@
-import { Category, GearItem, User } from "../../../generated/prisma/client";
-
-
 export type TGearItem = {
     name: string;
     description: string;
@@ -21,9 +18,4 @@ export type TGearFilters = {
     maxPrice?: number;
     availability?: boolean;
     searchTerm?: string;
-};
-
-export type TGearItemWithRelations = GearItem & {
-    provider: User;
-    category: Category;
 };

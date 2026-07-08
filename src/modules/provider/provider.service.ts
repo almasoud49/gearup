@@ -1,15 +1,11 @@
+import AppError from "../../errors/AppError";
+import { prisma } from "../../lib/prisma";
+import { TProviderGear, TUpdateGear } from "./provider.interface";
 
-import AppError from '../../errors/AppError';
-import { prisma } from '../../lib/prisma';
-import { TProviderGear, TUpdateGear, TOrderStatusUpdate, TProviderStats } from './provider.interface';
 
-// ==================== GEAR MANAGEMENT ====================
-
-// Add Gear
-const addGear = async (payload: TProviderGear, providerId: string) => {
+const addGearIntoDB = async (payload: TProviderGear, providerId: string) => {
     const { categoryId, ...rest } = payload;
 
-    // 1. Check if category exists
     const category = await prisma.category.findUnique({
         where: { id: categoryId },
     });
@@ -17,8 +13,7 @@ const addGear = async (payload: TProviderGear, providerId: string) => {
     if (!category) {
         throw new AppError(404, 'Category not found!');
     }
-
-    // 2. Check if gear with same name exists for this provider
+  
     const existingGear = await prisma.gearItem.findFirst({
         where: {
             name: {
@@ -33,7 +28,6 @@ const addGear = async (payload: TProviderGear, providerId: string) => {
         throw new AppError(409, 'You already have a gear item with this name!');
     }
 
-    // 3. Create gear
     const gear = await prisma.gearItem.create({
         data: {
             ...rest,
@@ -56,9 +50,7 @@ const addGear = async (payload: TProviderGear, providerId: string) => {
     return gear;
 };
 
-// Update Gear
-const updateGear = async (gearId: string, payload: TUpdateGear, providerId: string) => {
-    // 1. Check if gear exists and belongs to provider
+const updateGearIntoDB = async (gearId: string, payload: TUpdateGear, providerId: string) => {
     const gear = await prisma.gearItem.findUnique({
         where: { id: gearId },
     });
@@ -70,8 +62,7 @@ const updateGear = async (gearId: string, payload: TUpdateGear, providerId: stri
     if (gear.providerId !== providerId) {
         throw new AppError(403, 'You are not authorized to update this gear!');
     }
-
-    // 2. Check if category exists if provided
+ 
     if (payload.categoryId) {
         const category = await prisma.category.findUnique({
             where: { id: payload.categoryId },
@@ -82,7 +73,6 @@ const updateGear = async (gearId: string, payload: TUpdateGear, providerId: stri
         }
     }
 
-    // 3. Update gear
     const updatedGear = await prisma.gearItem.update({
         where: { id: gearId },
         data: payload,
@@ -101,9 +91,8 @@ const updateGear = async (gearId: string, payload: TUpdateGear, providerId: stri
     return updatedGear;
 };
 
-// Delete Gear
-const deleteGear = async (gearId: string, providerId: string) => {
-    // 1. Check if gear exists and belongs to provider
+const deleteGearFromDB = async (gearId: string, providerId: string) => {
+    // 1. Check if gear exists
     const gear = await prisma.gearItem.findUnique({
         where: { id: gearId },
         include: {
@@ -125,12 +114,10 @@ const deleteGear = async (gearId: string, providerId: string) => {
         throw new AppError(403, 'You are not authorized to delete this gear!');
     }
 
-    // 2. Check if gear has active rentals
     if (gear.rentalOrders.length > 0) {
         throw new AppError(400, 'Cannot delete gear with active rentals!');
     }
 
-    // 3. Delete gear
     await prisma.gearItem.delete({
         where: { id: gearId },
     });
@@ -138,10 +125,7 @@ const deleteGear = async (gearId: string, providerId: string) => {
     return null;
 };
 
-// ==================== ORDER MANAGEMENT ====================
-
-// Get Provider's Orders
-const getProviderOrders = async (providerId: string) => {
+const getProviderOrdersFromDB = async (providerId: string) => {
     const orders = await prisma.rentalOrder.findMany({
         where: {
             gearItem: {
@@ -172,9 +156,8 @@ const getProviderOrders = async (providerId: string) => {
     return orders;
 };
 
-// Update Order Status
-const updateOrderStatus = async (orderId: string, providerId: string, status: string) => {
-    // 1. Check if order exists and belongs to provider
+const updateOrderStatusIntoDB = async (orderId: string, providerId: string, status: string) => {
+    // 1. Check if order exists
     const order = await prisma.rentalOrder.findUnique({
         where: { id: orderId },
         include: {
@@ -189,8 +172,7 @@ const updateOrderStatus = async (orderId: string, providerId: string, status: st
     if (order.gearItem.providerId !== providerId) {
         throw new AppError(403, 'You are not authorized to update this order!');
     }
-
-    // 2. Define valid status transitions
+   
     const validTransitions: Record<string, string[]> = {
         PLACED: ['CONFIRMED', 'CANCELLED'],
         CONFIRMED: ['PAID', 'CANCELLED'],
@@ -199,16 +181,11 @@ const updateOrderStatus = async (orderId: string, providerId: string, status: st
         RETURNED: [],
         CANCELLED: [],
     };
-
-    // 3. Validate status transition
+   
     if (!validTransitions[order.status]?.includes(status)) {
-        throw new AppError(
-            400,
-            `Invalid status transition from ${order.status} to ${status}!`
-        );
+        throw new AppError(400, `Invalid status transition from ${order.status} to ${status}!`);
     }
-
-    // 4. Update order status
+ 
     const updatedOrder = await prisma.rentalOrder.update({
         where: { id: orderId },
         data: { status: status as any },
@@ -229,8 +206,7 @@ const updateOrderStatus = async (orderId: string, providerId: string, status: st
             review: true,
         },
     });
-
-    // 5. Handle stock restoration on RETURNED status
+ 
     if (status === 'RETURNED') {
         await prisma.gearItem.update({
             where: { id: order.gearItemId },
@@ -244,32 +220,24 @@ const updateOrderStatus = async (orderId: string, providerId: string, status: st
     return updatedOrder;
 };
 
-// ==================== STATISTICS ====================
-
-// Get Provider Statistics
-const getProviderStats = async (providerId: string): Promise<TProviderStats> => {
-    const stats = await prisma.$transaction([
-        // Total gear
+const getProviderStatsFromDB = async (providerId: string) => {
+    const stats = await prisma.$transaction([     
         prisma.gearItem.count({
             where: { providerId },
-        }),
-        // Available gear
+        }),    
         prisma.gearItem.count({
             where: { providerId, availability: true },
-        }),
-        // Unavailable gear
+        }),        
         prisma.gearItem.count({
             where: { providerId, availability: false },
-        }),
-        // Total orders
+        }),       
         prisma.rentalOrder.count({
             where: {
                 gearItem: {
                     providerId,
                 },
             },
-        }),
-        // Pending orders (PLACED, CONFIRMED)
+        }),      
         prisma.rentalOrder.count({
             where: {
                 gearItem: {
@@ -279,8 +247,7 @@ const getProviderStats = async (providerId: string): Promise<TProviderStats> => 
                     in: ['PLACED', 'CONFIRMED'],
                 },
             },
-        }),
-        // Completed orders (RETURNED)
+        }),    
         prisma.rentalOrder.count({
             where: {
                 gearItem: {
@@ -301,12 +268,11 @@ const getProviderStats = async (providerId: string): Promise<TProviderStats> => 
     };
 };
 
-
-export const providerServices = {
-    addGear,
-    updateGear,
-    deleteGear,
-    getProviderOrders,
-    updateOrderStatus,
-    getProviderStats,
+export const providerService = {
+    addGearIntoDB,
+    updateGearIntoDB,
+    deleteGearFromDB,
+    getProviderOrdersFromDB,
+    updateOrderStatusIntoDB,
+    getProviderStatsFromDB,
 };
