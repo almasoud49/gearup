@@ -11,6 +11,8 @@ import { reviewRoutes } from "./modules/review/review.route";
 import { paymentRoutes } from "./modules/payment/payment.route";
 import { providerRoutes } from "./modules/provider/provider.route";
 import { adminRoutes } from "./modules/admin/admin.route";
+import { notFound } from "./middlewares/notFound";
+import { globalErrorHandler } from "./middlewares/globalErrorHandler";
 
 const app : Application = express();
 
@@ -26,6 +28,9 @@ app.use(express.urlencoded({ extended : true }));
 app.use(cookieParser());
 
 
+app.get("/",(req : Request, res : Response) => {
+    res.send("Welcome to my gearup web application.");
+});
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -37,9 +42,10 @@ app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
 
 
-app.get("/",(req : Request, res : Response) => {
-    res.send("Welcome to my gearup web application.");
-});
+
+
+app.use(notFound);
+app.use(globalErrorHandler)
 
 
 
