@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { prisma } from "../../lib/prisma";
 
 export const handleCheckoutCompleted = async (session: Stripe.Checkout.Session) => {
-    console.log('✅ Checkout Session Completed:', session.id);
+    console.log('Checkout Session Completed:', session.id);
 
     const rentalOrderId = session.metadata?.rentalOrderId;
     const userId = session.metadata?.userId;
@@ -25,8 +25,7 @@ export const handleCheckoutCompleted = async (session: Stripe.Checkout.Session) 
         });
 
         console.log('Payment updated:', payment.id);
-
-        // 2. Update rental order status to PAID
+       
         await prisma.rentalOrder.update({
             where: { id: rentalOrderId },
             data: { status: 'PAID' },

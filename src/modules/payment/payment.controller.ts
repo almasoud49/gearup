@@ -4,7 +4,6 @@ import { sendResponse } from '../../utils/sendResponse';
 import { paymentServices } from './payment.service';
 import AppError from '../../errors/AppError';
 
-// ==================== CREATE PAYMENT ====================
 const createPayment = catchAsync(async (req: Request, res: Response) => {
     const { rentalOrderId } = req.body;
 
@@ -22,7 +21,6 @@ const createPayment = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== CONFIRM PAYMENT ====================
 const confirmPayment = catchAsync(async (req: Request, res: Response) => {
     const { paymentIntentId } = req.body;
 
@@ -40,7 +38,6 @@ const confirmPayment = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== GET PAYMENT HISTORY ====================
 const getPaymentHistory = catchAsync(async (req: Request, res: Response) => {
     const userId = req.user?.id;
 
@@ -58,7 +55,6 @@ const getPaymentHistory = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== GET PAYMENT DETAILS ====================
 const getPaymentDetails = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
 
@@ -76,7 +72,6 @@ const getPaymentDetails = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== HANDLE WEBHOOK ====================
 const handleWebhook = catchAsync(async (req: Request, res: Response) => {
     const signature = req.headers['stripe-signature'] as string;
     const payload = req.body;
