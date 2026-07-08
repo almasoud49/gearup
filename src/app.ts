@@ -8,6 +8,7 @@ import { categoryRoutes } from "./modules/category/category.route";
 import { gearRoutes } from "./modules/gear/gear.route";
 import { rentalRoutes } from "./modules/rental/rental.route";
 import { reviewRoutes } from "./modules/review/review.route";
+import { paymentRoutes } from "./modules/payment/payment.route";
 
 const app : Application = express();
 
@@ -15,8 +16,9 @@ const app : Application = express();
 app.use(cors({
     origin : config.app_url,
     credentials : true,
-}))
-
+}));
+const endpointSecret = config.stripe_webhook_secret;
+app.use("/api/subscription/webhook", express.raw({ type: 'application/json' }))
 app.use(express.json());
 app.use(express.urlencoded({ extended : true }));
 app.use(cookieParser());
@@ -28,6 +30,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/gear", gearRoutes); 
 app.use("/api/rentals", rentalRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use('/api/payments', paymentRoutes);
 
 
 app.get("/",(req : Request, res : Response) => {
