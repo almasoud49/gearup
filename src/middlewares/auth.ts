@@ -19,7 +19,6 @@ declare global {
     }
 }
 
-
 export const auth = (...requiredRoles: Role[]) => {
     return catchAsync(async (req: Request, res: Response, next: NextFunction) => {      
         const token = req.cookies?.accessToken ?
@@ -29,7 +28,7 @@ export const auth = (...requiredRoles: Role[]) => {
                 req.headers.authorization;
 
         if (!token) {
-            throw new Error("You are not logged in. Please log in to access this resource.");
+            throw new Error("You are not logged in. Please log in at first to access this resource.");
         }
  
         const verifiedToken = jwtUtils.verifyToken(token, config.jwt_access_secret as string);
@@ -64,7 +63,7 @@ export const auth = (...requiredRoles: Role[]) => {
         }
 
         if (user.isSuspended) {
-            throw new Error("Your account has been suspended. Please contact support.");
+            throw new Error("Your account has been suspended. Please contact our support.");
         }
 
         req.user = {

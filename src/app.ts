@@ -16,7 +16,6 @@ import { globalErrorHandler } from "./middlewares/globalErrorHandler";
 
 const app : Application = express();
 
-
 app.use(cors({
     origin : config.app_url,
     credentials : true,
@@ -41,13 +40,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
 
-
-
-
 app.use(notFound);
-app.use(globalErrorHandler)
-
-
+app.use(globalErrorHandler);
 
 export default app;
 

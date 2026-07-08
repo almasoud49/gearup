@@ -1,15 +1,18 @@
 import bcrypt from "bcryptjs";
-import { TLoginUser } from "./auth.interface";
-import AppError from "../../errors/AppError";
-import { prisma } from "../../lib/prisma";
-import { jwtUtils } from "../../utils/jwt";
 import config from "../../config";
-import { JwtPayload, SignOptions } from "jsonwebtoken";
+import AppError from "../../errors/AppError";
+import { jwtUtils } from "../../utils/jwt";
+import { 
+    TLoginUser, 
+    TJwtPayload, 
+    TAuthResponse, 
+    TRefreshTokenResponse 
+} from "./auth.interface";
+import { JwtPayload } from "jsonwebtoken";
+import { prisma } from "../../lib/prisma";
 
-const loginUser = async (payload: TLoginUser) => {
+const loginUser = async (payload: TLoginUser): Promise<TAuthResponse> => {
     const { email, password } = payload;
-
-    // Find user by email
     const user = await prisma.user.findUnique({
         where: { email },
     });
@@ -18,78 +21,112 @@ const loginUser = async (payload: TLoginUser) => {
         throw new AppError(404, 'User not found!');
     }
 
-    // Check if user is suspended
     if (user.isSuspended) {
-        throw new AppError(403, 'Your account has been suspended! Please contact admin.');
+        throw new AppError(403, 'Your account has been suspended!');
     }
+   
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    // Compare password with hashed password
-    const isPasswordMatched = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordMatched) {
+    if (!isPasswordValid) {
         throw new AppError(401, 'Invalid credentials!');
     }
 
-    const jwtPayload = {
+    const jwtPayload: TJwtPayload = {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
-    }
+        role: user.role,
+    };
 
     const accessToken = jwtUtils.createToken(
         jwtPayload,
-        config.jwt_access_secret,
+        config.jwt_access_secret as string,
         config.jwt_access_expires_in as string
     );
 
-     const refreshToken = jwtUtils.createToken(
+    const refreshToken = jwtUtils.createToken(
         jwtPayload,
-        config.jwt_refresh_secret,
+        config.jwt_refresh_secret as string,
         config.jwt_refresh_expires_in as string
     );
+  
+    const userWithoutPassword = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isSuspended: true,
+            createdAt: true,
+            updatedAt: true,            
+        },
+    });
 
     return {
         accessToken,
-        refreshToken
+        refreshToken,
+        user: userWithoutPassword!,
     };
 };
 
-const refreshToken = async (refreshToken : string) => {
-    const verifiedRefreshToken = jwtUtils.verifyToken(refreshToken, config.jwt_refresh_secret);
+const refreshToken = async (refreshToken: string): Promise<TRefreshTokenResponse> => {
+    const verifiedRefreshToken = jwtUtils.verifyToken(
+        refreshToken,
+        config.jwt_refresh_secret as string
+    );
 
-    if(!verifiedRefreshToken.success){
-        throw new Error(verifiedRefreshToken.error)
+    if (!verifiedRefreshToken.success) {
+        throw new AppError(401, verifiedRefreshToken.error || 'Invalid or expired refresh token!');
     }
 
-    const {id} = verifiedRefreshToken.data as JwtPayload;
-
+    const { id } = verifiedRefreshToken.data as JwtPayload;
+  
     const user = await prisma.user.findUnique({
-        where : {
-            id
-        }
-    })
+        where: { id },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isSuspended: true,            
+        },
+    });
 
-    const jwtPayload = {
-        id,
-        name : user?.name,
-        email : user?.email,
-        role : user?.role
+    if (!user) {
+        throw new AppError(404, 'User not found!');
     }
 
+    if (user.isSuspended) {
+        throw new AppError(403, 'Your account has been suspended!');
+    }
 
-    const accessToken = jwtUtils.createToken(
+    const jwtPayload: TJwtPayload = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+    };
+
+    const newAccessToken = jwtUtils.createToken(
         jwtPayload,
-        config.jwt_access_secret,
+        config.jwt_access_secret as string,
         config.jwt_access_expires_in as string
     );
 
-    return {accessToken}
-}
-
+    return {
+        accessToken: newAccessToken,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            isSuspended: user.isSuspended,
+        },
+    };
+};
 
 export const authService = {
     loginUser,
-    refreshToken
-}
-
+    refreshToken,
+};
