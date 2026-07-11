@@ -6,7 +6,7 @@
   "author": "",
   "type": "module",
   "main": "server.ts",
-  "scripts": {
+ "scripts": {
   "start": "node dist/server.js",
   "build": "npx --no-install prisma migrate deploy --schema=./prisma/schema/schema.prisma && tsx prisma/seed.ts && tsc",
   "vercel-build": "npx --no-install prisma generate --schema=./prisma/schema/schema.prisma && tsc --project tsconfig.json",
