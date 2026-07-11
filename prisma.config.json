@@ -1,0 +1,8 @@
+{
+  "schema": {
+    "folder": "prisma/schema"
+  },
+  "datasource": {
+    "url": "env(DATABASE_URL)"
+  }
+}

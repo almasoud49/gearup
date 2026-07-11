@@ -11,7 +11,7 @@
   "build": "prisma migrate deploy && tsx prisma/seed.ts && tsc",
   "vercel-build": "prisma generate && tsc --project tsconfig.json",
   "dev": "tsx watch src/server.ts"
-  },
+},
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
