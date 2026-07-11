@@ -1,6 +1,6 @@
-import "dotenv/config";
+require('dotenv').config();
 
-export default {
+module.exports = {
   schema: {
     folder: "prisma/schema"
   },
