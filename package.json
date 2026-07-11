@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "GearUp - Sports & Outdoor Equipment Rental API",
   "main": "dist/server.js",
-"scripts": {
-  "start": "node dist/server.js",
-  "build": "prisma migrate deploy --schema=./prisma/schema && tsx prisma/seed.ts && tsc",
-  "vercel-build": "prisma generate --schema=./prisma/schema && tsc",
-  "dev": "tsx watch src/server.ts"
-},
+  "scripts": {
+    "start": "node dist/server.js",
+    "build": "prisma migrate deploy && tsx prisma/seed.ts && tsc",
+    "vercel-build": "prisma generate && tsc",
+    "dev": "tsx watch src/server.ts"
+  },
+  "prisma": {
+    "schema": "./prisma"
+  },
   "engines": {
     "node": ">=18.0.0"
   },
