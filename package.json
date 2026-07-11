@@ -8,8 +8,8 @@
   "main": "server.ts",
 "scripts": {
   "start": "node dist/server.js",
-  "build": "prisma migrate deploy && tsx prisma/seed.ts && tsc",
-  "vercel-build": "prisma generate && tsc --project tsconfig.json",
+  "build": "PRISMA_GENERATE_SKIP_FLAG_CHECK=true prisma migrate deploy --schema=./prisma/schema/schema.prisma && tsx prisma/seed.ts && tsc",
+  "vercel-build": "PRISMA_GENERATE_SKIP_FLAG_CHECK=true prisma generate --schema=./prisma/schema/schema.prisma && tsc --project tsconfig.json",
   "dev": "tsx watch src/server.ts"
 },
   "devDependencies": {
