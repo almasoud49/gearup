@@ -1,23 +1,13 @@
-import "dotenv/config";
-import { Pool } from "pg"; // Ensure 'pg' is imported for the adapter pool
+import { PrismaClient } from "@prisma/client";
+import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
 
-const connectionString = `${process.env.DATABASE_URL}`;
 
-const prismaClientSingleton = () => {
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
-};
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
 
-declare global {
-  var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
-}
 
-// Reuse the existing instance if it's already running in the global scope
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
-
-export { prisma };
-
-if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma;
+export const prisma = new PrismaClient({
+  adapter,
+  datasourceUrl: process.env.DATABASE_URL, 
+});
