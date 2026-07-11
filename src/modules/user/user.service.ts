@@ -1,9 +1,10 @@
 import bcrypt from "bcryptjs";
+import httpStatus from "http-status";
 import config from "../../config";
 import AppError from "../../errors/AppError";
 import { TRegisterUser, TUpdateUser } from "./user.interface";
 import { prisma } from "../../lib/prisma";
-
+import { findUserById } from "../../utils/user";
 
 const registerUserIntoDB = async (payload: TRegisterUser) => {
     const { name, email, password, role } = payload;
@@ -13,11 +14,11 @@ const registerUserIntoDB = async (payload: TRegisterUser) => {
     });
 
     if (isUserExist) {
-        throw new AppError(409, 'User with this email already exists');
+        throw new AppError(httpStatus.CONFLICT, 'User with this email already exists');
     }
-   
+
     const hashedPassword = await bcrypt.hash(password, Number(config.bcrypt_salt_rounds));
-   
+
     const createdUser = await prisma.user.create({
         data: {
             name,
@@ -26,8 +27,8 @@ const registerUserIntoDB = async (payload: TRegisterUser) => {
             role,
         },
     });
-   
-    const user = await prisma.user.findUnique({
+
+    return await prisma.user.findUnique({
         where: {
             id: createdUser.id,
         },
@@ -41,12 +42,12 @@ const registerUserIntoDB = async (payload: TRegisterUser) => {
             updatedAt: true,
         },
     });
-
-    return user;
 };
 
 const getMyProfileFromDB = async (userId: string) => {
-    const user = await prisma.user.findUnique({
+    const user = await findUserById(userId);
+
+    return await prisma.user.findUnique({
         where: { id: userId },
         select: {
             id: true,
@@ -58,40 +59,26 @@ const getMyProfileFromDB = async (userId: string) => {
             updatedAt: true,
         },
     });
-
-    if (!user) {
-        throw new AppError(404, 'User not found');
-    }
-
-    return user;
 };
 
 const updateMyProfileInDB = async (userId: string, payload: TUpdateUser) => {
     const { name, email } = payload;
 
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-    });
+    await findUserById(userId);
 
-    if (!user) {
-        throw new AppError(404, 'User not found');
-    }  
     if (email) {
         const existingUser = await prisma.user.findUnique({
             where: { email },
         });
 
         if (existingUser && existingUser.id !== userId) {
-            throw new AppError(409, 'Email already in use');
+            throw new AppError(httpStatus.CONFLICT, 'Email already in use');
         }
     }
-   
-    const updatedUser = await prisma.user.update({
+
+    return await prisma.user.update({
         where: { id: userId },
-        data: {
-            name,
-            email,
-        },
+        data: { name, email },
         select: {
             id: true,
             name: true,
@@ -102,15 +89,12 @@ const updateMyProfileInDB = async (userId: string, payload: TUpdateUser) => {
             updatedAt: true,
         },
     });
-
-    return updatedUser;
 };
+
 const getUserByEmailFromDB = async (email: string) => {
-    const user = await prisma.user.findUnique({
+    return await prisma.user.findUnique({
         where: { email },
     });
-
-    return user;
 };
 
 export const userService = {

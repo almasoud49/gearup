@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response } from "express";
+import httpStatus from "http-status";
 import { Role } from "../../generated/prisma/enums";
 import { catchAsync } from "../utils/catchAsync";
 import { jwtUtils } from "../utils/jwt";
 import config from "../config";
 import { JwtPayload } from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
+import AppError from "../errors/AppError";
 
 declare global {
     namespace Express {
@@ -28,18 +30,18 @@ export const auth = (...requiredRoles: Role[]) => {
                 req.headers.authorization;
 
         if (!token) {
-            throw new Error("You are not logged in. Please log in at first to access this resource.");
+            throw new AppError(httpStatus.UNAUTHORIZED, "You are not logged in. Please log in first to access this resource.");
         }
  
         const verifiedToken = jwtUtils.verifyToken(token, config.jwt_access_secret as string);
 
         if (!verifiedToken.success) {
-            throw new Error(verifiedToken.error || "Invalid or expired token. Please login again.");
+            throw new AppError(httpStatus.UNAUTHORIZED, verifiedToken.error || "Invalid or expired token. Please login again.");
         }
         const { id, email, name, role } = verifiedToken.data as JwtPayload;
    
         if (requiredRoles.length && !requiredRoles.includes(role)) {
-            throw new Error(`Forbidden. Only ${requiredRoles.join(', ')} can access this resource.`);
+            throw new AppError(httpStatus.FORBIDDEN, `Forbidden. Only ${requiredRoles.join(', ')} can access this resource.`);
         }
 
         const user = await prisma.user.findUnique({
@@ -59,11 +61,11 @@ export const auth = (...requiredRoles: Role[]) => {
         });
 
         if (!user) {
-            throw new Error("User not found. Please log in again.");
+            throw new AppError(httpStatus.NOT_FOUND, "User not found. Please log in again.");
         }
 
         if (user.isSuspended) {
-            throw new Error("Your account has been suspended. Please contact our support.");
+            throw new AppError(httpStatus.FORBIDDEN, "Your account has been suspended. Please contact our support.");
         }
 
         req.user = {
@@ -76,5 +78,5 @@ export const auth = (...requiredRoles: Role[]) => {
         next();
     });
 };
-export { Role };
 
+export { Role };

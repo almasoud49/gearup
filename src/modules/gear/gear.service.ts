@@ -1,38 +1,34 @@
+import { Prisma } from "../../../generated/prisma/client";
+import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
 import { prisma } from "../../lib/prisma";
-import { TGearItem, TGearFilters } from "./gear.interface";
+import { TGearItem } from "./gear.interface";
+import { getPagination, createMeta } from "../../utils/pagination";
+import { buildSearchConditions } from "../../utils/search";
+import { validateCategory, validateGear, validateGearBasic } from "../../utils/common";
 
 const createGearIntoDB = async (payload: TGearItem) => {
     const { categoryId, providerId, name, stockQuantity, ...rest } = payload;
-    const category = await prisma.category.findUnique({
-        where: { id: categoryId },
-    });
 
-    if (!category) {
-        throw new AppError(404, 'Category not found!');
-    }
- 
+    await validateCategory(categoryId);
+
     const provider = await prisma.user.findUnique({
         where: { id: providerId },
-        select: {
-            id: true,
-            role: true,
-            isSuspended: true,
-        },
+        select: { id: true, role: true, isSuspended: true },
     });
 
     if (!provider) {
-        throw new AppError(404, 'Provider not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'Provider not found!');
     }
 
     if (provider.isSuspended) {
-        throw new AppError(403, 'Provider account is suspended!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Provider account is suspended!');
     }
 
     if (provider.role !== 'PROVIDER' && provider.role !== 'ADMIN') {
-        throw new AppError(403, 'Only providers and admins can create gear!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Only providers and admins can create gear!');
     }
-   
+
     const existingGear = await prisma.gearItem.findFirst({
         where: {
             name: {
@@ -44,12 +40,12 @@ const createGearIntoDB = async (payload: TGearItem) => {
     });
 
     if (existingGear) {
-        throw new AppError(409, 'You already have a gear item with this name!');
+        throw new AppError(httpStatus.CONFLICT, 'You already have a gear item with this name!');
     }
-    
+
     const finalStockQuantity = stockQuantity || 1;
-   
-    const gear = await prisma.gearItem.create({
+
+    return await prisma.gearItem.create({
         data: {
             name,
             description: rest.description,
@@ -74,60 +70,70 @@ const createGearIntoDB = async (payload: TGearItem) => {
             category: true,
         },
     });
-
-    return gear;
 };
 
+const getAllGearFromDB = async (query: any) => {
+    const { limit, page, skip, sortBy, sortOrder } = getPagination(query);
 
-const getAllGearFromDB = async (filters: TGearFilters = {}) => {
-    const { category, brand, minPrice, maxPrice, availability, searchTerm } = filters;
+    const andConditions: Prisma.GearItemWhereInput[] = [];
 
-    const whereConditions: any = {
-        availability: availability !== undefined ? availability : true,
+    if (query.searchTerm) {
+        andConditions.push(...buildSearchConditions(query.searchTerm, ['name', 'description', 'brand']));
+    }
+
+    if (query.category) {
+        andConditions.push({
+            category: {
+                name: {
+                    equals: query.category,
+                    mode: "insensitive",
+                },
+            },
+        });
+    }
+
+    if (query.brand) {
+        andConditions.push({
+            brand: {
+                equals: query.brand,
+                mode: "insensitive",
+            },
+        });
+    }
+
+    if (query.minPrice) {
+        andConditions.push({
+            pricePerDay: {
+                gte: Number(query.minPrice),
+            },
+        });
+    }
+
+    if (query.maxPrice) {
+        andConditions.push({
+            pricePerDay: {
+                lte: Number(query.maxPrice),
+            },
+        });
+    }
+
+    if (query.availability !== undefined) {
+        andConditions.push({
+            availability: query.availability === "true",
+        });
+    }
+
+    andConditions.push({
         stockQuantity: {
             gt: 0,
         },
-    };
-
-    if (category) {
-        whereConditions.category = {
-            name: {
-                equals: category,
-                mode: 'insensitive',
-            },
-        };
-    }
-
-    if (brand) {
-        whereConditions.brand = {
-            equals: brand,
-            mode: 'insensitive',
-        };
-    }
-
-    if (minPrice !== undefined) {
-        whereConditions.pricePerDay = {
-            gte: minPrice,
-        };
-    }
-
-    if (maxPrice !== undefined) {
-        whereConditions.pricePerDay = {
-            ...whereConditions.pricePerDay,
-            lte: maxPrice,
-        };
-    }
-
-    if (searchTerm) {
-        whereConditions.OR = [
-            { name: { contains: searchTerm, mode: 'insensitive' } },
-            { description: { contains: searchTerm, mode: 'insensitive' } },
-            { brand: { contains: searchTerm, mode: 'insensitive' } },
-        ];
-    }
+    });
 
     const gearItems = await prisma.gearItem.findMany({
-        where: whereConditions,
+        where: { AND: andConditions },
+        take: limit,
+        skip: skip,
+        orderBy: { [sortBy]: sortOrder },
         include: {
             provider: {
                 select: {
@@ -149,7 +155,7 @@ const getAllGearFromDB = async (filters: TGearFilters = {}) => {
                     },
                 },
                 orderBy: {
-                    createdAt: 'desc',
+                    createdAt: "desc",
                 },
             },
             _count: {
@@ -158,11 +164,12 @@ const getAllGearFromDB = async (filters: TGearFilters = {}) => {
                 },
             },
         },
-        orderBy: {
-            createdAt: 'desc',
-        },
     });
-   
+
+    const totalGearCount = await prisma.gearItem.count({
+        where: { AND: andConditions },
+    });
+
     const gearWithRating = gearItems.map((gear) => {
         const totalRating = gear.reviews.reduce((sum, review) => sum + review.rating, 0);
         const averageRating = gear.reviews.length > 0 ? totalRating / gear.reviews.length : 0;
@@ -174,51 +181,16 @@ const getAllGearFromDB = async (filters: TGearFilters = {}) => {
         };
     });
 
-    return gearWithRating;
+    return {
+        data: gearWithRating,
+        meta: createMeta(page, limit, totalGearCount),
+    };
 };
 
 const getGearByIdFromDB = async (id: string) => {
-    const gear = await prisma.gearItem.findUnique({
-        where: { id },
-        include: {
-            provider: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                },
-            },
-            category: true,
-            reviews: {
-                select: {
-                    id: true,
-                    rating: true,
-                    comment: true,
-                    createdAt: true,
-                    customer: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
-                    },
-                },
-                orderBy: {
-                    createdAt: 'desc',
-                },
-            },
-            _count: {
-                select: {
-                    reviews: true,
-                },
-            },
-        },
-    });
+    const gear = await validateGear(id);
 
-    if (!gear) {
-        throw new AppError(404, 'Gear item not found!');
-    }
-
-    const totalRating = gear.reviews.reduce((sum, review) => sum + review.rating, 0);
+    const totalRating = gear.reviews.reduce((sum: number, review: any) => sum + review.rating, 0);
     const averageRating = gear.reviews.length > 0 ? totalRating / gear.reviews.length : 0;
 
     return {
@@ -228,30 +200,18 @@ const getGearByIdFromDB = async (id: string) => {
     };
 };
 
-const updateGearIntoDB = async (id: string, payload: Partial<TGearItem>, providerId: string) => {   
-    const gear = await prisma.gearItem.findUnique({
-        where: { id },
-    });
+const updateGearIntoDB = async (id: string, payload: Partial<TGearItem>, providerId: string) => {
+    const gear = await validateGearBasic(id);
 
-    if (!gear) {
-        throw new AppError(404, 'Gear item not found!');
-    }
-  
     if (gear.providerId !== providerId) {
-        throw new AppError(403, 'You are not authorized to update this gear!');
+        throw new AppError(httpStatus.FORBIDDEN, 'You are not authorized to update this gear!');
     }
 
     if (payload.categoryId) {
-        const category = await prisma.category.findUnique({
-            where: { id: payload.categoryId },
-        });
-
-        if (!category) {
-            throw new AppError(404, 'Category not found!');
-        }
+        await validateCategory(payload.categoryId);
     }
-  
-    const updatedGear = await prisma.gearItem.update({
+
+    return await prisma.gearItem.update({
         where: { id },
         data: payload,
         include: {
@@ -265,45 +225,25 @@ const updateGearIntoDB = async (id: string, payload: Partial<TGearItem>, provide
             category: true,
         },
     });
-
-    return updatedGear;
 };
 
-const deleteGearFromDB = async (id: string, providerId: string) => { 
-    const gear = await prisma.gearItem.findUnique({
-        where: { id },
-        include: {
-            rentalOrders: {
-                where: {
-                    status: {
-                        in: ['PLACED', 'CONFIRMED', 'PAID', 'PICKED_UP'],
-                    },
-                },
-            },
-        },
-    });
+const deleteGearFromDB = async (id: string, providerId: string) => {
+    const gear = await validateGearBasic(id);
 
-    if (!gear) {
-        throw new AppError(404, 'Gear item not found!');
-    }
- 
     if (gear.providerId !== providerId) {
-        throw new AppError(403, 'You are not authorized to delete this gear!');
+        throw new AppError(httpStatus.FORBIDDEN, 'You are not authorized to delete this gear!');
     }
-  
+
     if (gear.rentalOrders.length > 0) {
-        throw new AppError(400, 'Cannot delete gear with active rentals!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Cannot delete gear with active rentals!');
     }
 
-    await prisma.gearItem.delete({
-        where: { id },
-    });
-
+    await prisma.gearItem.delete({ where: { id } });
     return null;
 };
 
 const getProviderGearFromDB = async (providerId: string) => {
-    const gearItems = await prisma.gearItem.findMany({
+    return await prisma.gearItem.findMany({
         where: { providerId },
         include: {
             category: true,
@@ -336,8 +276,6 @@ const getProviderGearFromDB = async (providerId: string) => {
             createdAt: 'desc',
         },
     });
-
-    return gearItems;
 };
 
 export const gearService = {

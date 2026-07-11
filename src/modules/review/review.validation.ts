@@ -14,8 +14,9 @@ const createReviewValidationSchema = z.object({
             .max(500, 'Comment cannot exceed 500 characters')
             .optional(),
 
+       
         gearItemId: z.string()
-            .uuid('Invalid gear item ID format')
+            .min(1, 'Gear item ID is required')
             .refine((val) => val !== undefined && val !== null && val !== '', {
                 message: 'Gear item ID is required'
             }),
@@ -39,9 +40,13 @@ const updateReviewValidationSchema = z.object({
 const reviewFiltersValidationSchema = z.object({
     query: z.object({
         rating: z.string().transform(Number).optional(),
-        gearItemId: z.string().uuid('Invalid gear item ID format').optional(),
-        customerId: z.string().uuid('Invalid customer ID format').optional(),
+        gearItemId: z.string().optional(),
+        customerId: z.string().optional(),
         searchTerm: z.string().optional(),
+        page: z.string().transform(Number).optional(),
+        limit: z.string().transform(Number).optional(),
+        sortBy: z.string().optional(),
+        sortOrder: z.enum(['asc', 'desc']).optional(),
     }),
 });
 

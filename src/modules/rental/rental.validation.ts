@@ -13,9 +13,9 @@ const createRentalValidationSchema = z.object({
             .refine((val) => val !== undefined && val !== null && val !== '', {
                 message: 'End date is required'
             }),
-
+        
         gearItemId: z.string()
-            .uuid('Invalid gear item ID format')
+            .min(1, 'Gear item ID is required')
             .refine((val) => val !== undefined && val !== null && val !== '', {
                 message: 'Gear item ID is required'
             }),
@@ -24,7 +24,6 @@ const createRentalValidationSchema = z.object({
 
 const updateRentalStatusValidationSchema = z.object({
     body: z.object({
-        // ✅ Fixed: Use .refine() for enum validation
         status: z.enum(['CONFIRMED', 'PAID', 'PICKED_UP', 'RETURNED', 'CANCELLED'])
             .refine((val) => val !== undefined && val !== null, {
                 message: 'Status is required'
@@ -35,9 +34,13 @@ const updateRentalStatusValidationSchema = z.object({
 const rentalFiltersValidationSchema = z.object({
     query: z.object({
         status: z.enum(['PLACED', 'CONFIRMED', 'PAID', 'PICKED_UP', 'RETURNED', 'CANCELLED']).optional(),
-        customerId: z.string().uuid('Invalid customer ID format').optional(),
-        providerId: z.string().uuid('Invalid provider ID format').optional(),
+        customerId: z.string().optional(),
+        providerId: z.string().optional(),
         searchTerm: z.string().optional(),
+        page: z.string().transform(Number).optional(),
+        limit: z.string().transform(Number).optional(),
+        sortBy: z.string().optional(),
+        sortOrder: z.enum(['asc', 'desc']).optional(),
     }),
 });
 

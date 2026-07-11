@@ -6,10 +6,9 @@ import { rentalService } from "./rental.service";
 import { pick } from "../../utils/pick";
 import AppError from "../../errors/AppError";
 
-// ==================== CREATE RENTAL ====================
 const createRental = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const payload = {
@@ -27,45 +26,40 @@ const createRental = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== GET ALL RENTALS ====================
 const getAllRentals = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
-    const rawFilters = pick(req.query, ['status', 'customerId', 'providerId', 'searchTerm']);
-    
-    const filters: any = {
-        status: rawFilters.status as string | undefined,
-        customerId: rawFilters.customerId as string | undefined,
-        providerId: rawFilters.providerId as string | undefined,
-        searchTerm: rawFilters.searchTerm as string | undefined,
-    };
+    const query = pick(req.query, [
+        'status',
+        'searchTerm',
+        'startDate',
+        'endDate',
+        'page',
+        'limit',
+        'sortBy',
+        'sortOrder',
+    ]);
 
-    // If user is customer, only show their rentals
-    if (req.user.role === 'CUSTOMER') {
-        filters.customerId = req.user.id;
-    }
-    
-    // If user is provider, only show their rentals
-    if (req.user.role === 'PROVIDER') {
-        filters.providerId = req.user.id;
-    }
-
-    const rentals = await rentalService.getAllRentalsFromDB(filters);
+    const rentals = await rentalService.getAllRentalsFromDB(
+        query,
+        req.user.id,
+        req.user.role
+    );
 
     sendResponse(res, {
         success: true,
         statusCode: httpStatus.OK,
         message: "Rentals retrieved successfully!",
-        data: rentals,
+        data: rentals.data,
+        meta: rentals.meta,
     });
 });
 
-// ==================== GET RENTAL BY ID ====================
 const getRentalById = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
@@ -79,10 +73,9 @@ const getRentalById = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== GET USER RENTALS ====================
 const getUserRentals = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const rentals = await rentalService.getUserRentalsFromDB(req.user.id);
@@ -95,10 +88,9 @@ const getUserRentals = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== CANCEL RENTAL ====================
 const cancelRental = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
@@ -112,10 +104,9 @@ const cancelRental = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-// ==================== RENTAL STATS ====================
 const getRentalStats = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const stats = await rentalService.getRentalStatsFromDB(req.user.id, req.user.role);

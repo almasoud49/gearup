@@ -5,15 +5,18 @@ export const catchAsync = (fn: RequestHandler) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
             await fn(req, res, next);
-        } catch (error) {
+        } catch (error: any) {
             console.log(error);
 
-            res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+            const statusCode = error.statusCode || httpStatus.INTERNAL_SERVER_ERROR;
+            const message = error.message || "Something went wrong";
+
+            res.status(statusCode).json({
                 success: false,
-                statusCode: httpStatus.INTERNAL_SERVER_ERROR,
-                message: "Failed to register user",
+                statusCode: statusCode,
+                message: message,
                 error: (error as Error).message
-            })
+            });
         }
     }
 }

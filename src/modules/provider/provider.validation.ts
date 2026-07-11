@@ -33,9 +33,9 @@ const addGearValidationSchema = z.object({
             .min(1, 'At least one image is required'),
 
         specifications: z.any().optional(),
-
+       
         categoryId: z.string()
-            .uuid('Invalid category ID format')
+            .min(1, 'Category ID is required')
             .refine((val) => val !== undefined && val !== null && val !== '', {
                 message: 'Category ID is required'
             }),
@@ -74,12 +74,11 @@ const updateGearValidationSchema = z.object({
         specifications: z.any().optional(),
 
         categoryId: z.string()
-            .uuid('Invalid category ID format')
+            .min(1, 'Category ID is required')
             .optional(),
     }),
 });
 
-// ✅ Fixed: Use .refine() for enum validation
 const updateOrderStatusValidationSchema = z.object({
     body: z.object({
         status: z.enum(['CONFIRMED', 'PAID', 'PICKED_UP', 'RETURNED', 'CANCELLED'])

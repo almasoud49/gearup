@@ -8,15 +8,18 @@ model GearItem {
   stockQuantity    Int         @default(1)
   images           String[]
   specifications   Json?
+  isDeleted        Boolean     @default(false)
+  deletedAt        DateTime?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
   providerId       String
-  provider         User        @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  
-  categoryId       String 
+  categoryId       String
+
+  provider         User        @relation(fields: [providerId], references: [id])
   category         Category    @relation(fields: [categoryId], references: [id])
-  
   rentalOrders     RentalOrder[]
   reviews          Review[]
+
+  
 }

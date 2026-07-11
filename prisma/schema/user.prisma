@@ -5,10 +5,14 @@ model User {
   password      String
   role          Role      @default(CUSTOMER)
   isSuspended   Boolean   @default(false)
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   gearItems     GearItem[]
   rentalOrders  RentalOrder[]
   reviews       Review[]
+
+  
 }

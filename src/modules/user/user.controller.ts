@@ -20,7 +20,7 @@ const registerUser = catchAsync(async (req: Request, res: Response) => {
 
 const getMyProfile = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const profile = await userService.getMyProfileFromDB(req.user.id);
@@ -35,7 +35,7 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
 
 const updateMyProfile = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const payload = req.body;

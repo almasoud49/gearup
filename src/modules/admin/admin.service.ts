@@ -1,30 +1,40 @@
-import AppError from '../../errors/AppError';
-import { prisma } from '../../lib/prisma';
-import { TUserStatusUpdate, TUserRoleUpdate, TAdminStats, TUserFilter } from './admin.interface';
+import { Prisma } from "../../../generated/prisma/client";
+import httpStatus from "http-status";
+import AppError from "../../errors/AppError";
+import { prisma } from "../../lib/prisma";
+import { TUserStatusUpdate, TUserRoleUpdate, TAdminStats } from "./admin.interface";
+import { getPagination, createMeta } from "../../utils/pagination";
+import { findUserById } from "../../utils/user";
 
+const getAllUsers = async (query: any) => {
+    const { limit, page, skip, sortBy, sortOrder } = getPagination(query);
 
-const getAllUsers = async (filters: TUserFilter = {}) => {
-    const { role, isSuspended, searchTerm } = filters;
+    const andConditions: Prisma.UserWhereInput[] = [];
 
-    const whereConditions: any = {};
-
-    if (role) {
-        whereConditions.role = role;
+    if (query.role) {
+        andConditions.push({ role: query.role });
     }
 
-    if (isSuspended !== undefined) {
-        whereConditions.isSuspended = isSuspended;
+    if (query.isSuspended !== undefined) {
+        andConditions.push({
+            isSuspended: query.isSuspended === "true",
+        });
     }
 
-    if (searchTerm) {
-        whereConditions.OR = [
-            { name: { contains: searchTerm, mode: 'insensitive' } },
-            { email: { contains: searchTerm, mode: 'insensitive' } },
-        ];
+    if (query.searchTerm) {
+        andConditions.push({
+            OR: [
+                { name: { contains: query.searchTerm, mode: "insensitive" } },
+                { email: { contains: query.searchTerm, mode: "insensitive" } },
+            ],
+        });
     }
 
     const users = await prisma.user.findMany({
-        where: whereConditions,
+        where: { AND: andConditions },
+        take: limit,
+        skip: skip,
+        orderBy: { [sortBy]: sortOrder },
         select: {
             id: true,
             name: true,
@@ -41,15 +51,18 @@ const getAllUsers = async (filters: TUserFilter = {}) => {
                 },
             },
         },
-        orderBy: {
-            createdAt: 'desc',
-        },
     });
 
-    return users;
+    const totalUserCount = await prisma.user.count({
+        where: { AND: andConditions },
+    });
+
+    return {
+        data: users,
+        meta: createMeta(page, limit, totalUserCount),
+    };
 };
 
-// Get User by ID
 const getUserById = async (userId: string) => {
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -62,26 +75,18 @@ const getUserById = async (userId: string) => {
             createdAt: true,
             updatedAt: true,
             gearItems: {
-                include: {
-                    category: true,
-                },
+                include: { category: true },
             },
             rentalOrders: {
                 include: {
                     gearItem: true,
                     payment: true,
                 },
-                orderBy: {
-                    createdAt: 'desc',
-                },
+                orderBy: { createdAt: 'desc' },
             },
             reviews: {
-                include: {
-                    gearItem: true,
-                },
-                orderBy: {
-                    createdAt: 'desc',
-                },
+                include: { gearItem: true },
+                orderBy: { createdAt: 'desc' },
             },
             _count: {
                 select: {
@@ -94,7 +99,7 @@ const getUserById = async (userId: string) => {
     });
 
     if (!user) {
-        throw new AppError(404, 'User not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
     }
 
     return user;
@@ -103,22 +108,13 @@ const getUserById = async (userId: string) => {
 const updateUserStatus = async (userId: string, payload: TUserStatusUpdate) => {
     const { isSuspended } = payload;
 
-    // 1. Check if user exists
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-    });
+    const user = await findUserById(userId);
 
-    if (!user) {
-        throw new AppError(404, 'User not found!');
-    }
-
-    // 2. Prevent suspending admin
     if (user.role === 'ADMIN') {
-        throw new AppError(403, 'Cannot suspend an admin user!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Cannot suspend an admin user!');
     }
 
-    // 3. Update user status
-    const updatedUser = await prisma.user.update({
+    return await prisma.user.update({
         where: { id: userId },
         data: { isSuspended },
         select: {
@@ -130,28 +126,18 @@ const updateUserStatus = async (userId: string, payload: TUserStatusUpdate) => {
             updatedAt: true,
         },
     });
-
-    return updatedUser;
 };
 
-// Change User Role
 const updateUserRole = async (userId: string, payload: TUserRoleUpdate) => {
     const { role } = payload;
 
-    // 1. Check if user exists
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-    });
+    const user = await findUserById(userId);
 
-    if (!user) {
-        throw new AppError(404, 'User not found!');
-    }
-    
     if (user.role === 'ADMIN') {
-        throw new AppError(403, 'Cannot change admin role!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Cannot change admin role!');
     }
-   
-    const updatedUser = await prisma.user.update({
+
+    return await prisma.user.update({
         where: { id: userId },
         data: { role },
         select: {
@@ -163,40 +149,57 @@ const updateUserRole = async (userId: string, payload: TUserRoleUpdate) => {
             updatedAt: true,
         },
     });
-
-    return updatedUser;
 };
 
 const deleteUser = async (userId: string) => {
-    // 1. Check if user exists
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
+            gearItems: {
+                select: { id: true },
+            },
             rentalOrders: {
-                where: {
-                    status: {
-                        in: ['PLACED', 'CONFIRMED', 'PAID', 'PICKED_UP'],
-                    },
-                },
+                select: { id: true },
+            },
+            reviews: {
+                select: { id: true },
             },
         },
     });
 
     if (!user) {
-        throw new AppError(404, 'User not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
     }
 
-    // 2. Prevent deleting admin
     if (user.role === 'ADMIN') {
-        throw new AppError(403, 'Cannot delete an admin user!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Cannot delete an admin user!');
     }
 
-    // 3. Check if user has active rentals
-    if (user.rentalOrders.length > 0) {
-        throw new AppError(400, 'Cannot delete user with active rentals!');
+    const activeRentals = await prisma.rentalOrder.findMany({
+        where: {
+            customerId: userId,
+            status: {
+                notIn: ['RETURNED', 'CANCELLED'],
+            },
+        },
+    });
+
+    if (activeRentals.length > 0) {
+        throw new AppError(httpStatus.BAD_REQUEST, 'Cannot delete user with active rentals!');
     }
 
-    // 4. Delete user
+    await prisma.review.deleteMany({
+        where: { customerId: userId },
+    });
+
+    await prisma.rentalOrder.deleteMany({
+        where: { customerId: userId },
+    });
+
+    await prisma.gearItem.deleteMany({
+        where: { providerId: userId },
+    });
+
     await prisma.user.delete({
         where: { id: userId },
     });
@@ -204,26 +207,32 @@ const deleteUser = async (userId: string) => {
     return null;
 };
 
+const getAllGear = async (query: any) => {
+    const { limit, page, skip, sortBy, sortOrder } = getPagination(query);
 
-const getAllGear = async (filters: { searchTerm?: string; availability?: boolean } = {}) => {
-    const { searchTerm, availability } = filters;
+    const andConditions: Prisma.GearItemWhereInput[] = [];
 
-    const whereConditions: any = {};
-
-    if (availability !== undefined) {
-        whereConditions.availability = availability;
+    if (query.searchTerm) {
+        andConditions.push({
+            OR: [
+                { name: { contains: query.searchTerm, mode: "insensitive" } },
+                { description: { contains: query.searchTerm, mode: "insensitive" } },
+                { brand: { contains: query.searchTerm, mode: "insensitive" } },
+            ],
+        });
     }
 
-    if (searchTerm) {
-        whereConditions.OR = [
-            { name: { contains: searchTerm, mode: 'insensitive' } },
-            { description: { contains: searchTerm, mode: 'insensitive' } },
-            { brand: { contains: searchTerm, mode: 'insensitive' } },
-        ];
+    if (query.availability !== undefined) {
+        andConditions.push({
+            availability: query.availability === "true",
+        });
     }
 
     const gearItems = await prisma.gearItem.findMany({
-        where: whereConditions,
+        where: { AND: andConditions },
+        take: limit,
+        skip: skip,
+        orderBy: { [sortBy]: sortOrder },
         include: {
             provider: {
                 select: {
@@ -240,47 +249,55 @@ const getAllGear = async (filters: { searchTerm?: string; availability?: boolean
                 },
             },
         },
-        orderBy: {
-            createdAt: 'desc',
-        },
     });
 
-    return gearItems;
+    const totalGearCount = await prisma.gearItem.count({
+        where: { AND: andConditions },
+    });
+
+    return {
+        data: gearItems,
+        meta: createMeta(page, limit, totalGearCount),
+    };
 };
 
+const getAllRentals = async (query: any) => {
+    const { limit, page, skip, sortBy, sortOrder } = getPagination(query);
 
-const getAllRentals = async (filters: { status?: string; searchTerm?: string } = {}) => {
-    const { status, searchTerm } = filters;
+    const andConditions: Prisma.RentalOrderWhereInput[] = [];
 
-    const whereConditions: any = {};
-
-    if (status) {
-        whereConditions.status = status;
+    if (query.status) {
+        andConditions.push({ status: query.status });
     }
 
-    if (searchTerm) {
-        whereConditions.OR = [
-            {
-                customer: {
-                    name: {
-                        contains: searchTerm,
-                        mode: 'insensitive',
+    if (query.searchTerm) {
+        andConditions.push({
+            OR: [
+                {
+                    customer: {
+                        name: {
+                            contains: query.searchTerm,
+                            mode: "insensitive",
+                        },
                     },
                 },
-            },
-            {
-                gearItem: {
-                    name: {
-                        contains: searchTerm,
-                        mode: 'insensitive',
+                {
+                    gearItem: {
+                        name: {
+                            contains: query.searchTerm,
+                            mode: "insensitive",
+                        },
                     },
                 },
-            },
-        ];
+            ],
+        });
     }
 
     const rentals = await prisma.rentalOrder.findMany({
-        where: whereConditions,
+        where: { AND: andConditions },
+        take: limit,
+        skip: skip,
+        orderBy: { [sortBy]: sortOrder },
         include: {
             customer: {
                 select: {
@@ -304,35 +321,29 @@ const getAllRentals = async (filters: { status?: string; searchTerm?: string } =
             payment: true,
             review: true,
         },
-        orderBy: {
-            createdAt: 'desc',
-        },
     });
 
-    return rentals;
-};
+    const totalRentalCount = await prisma.rentalOrder.count({
+        where: { AND: andConditions },
+    });
 
+    return {
+        data: rentals,
+        meta: createMeta(page, limit, totalRentalCount),
+    };
+};
 
 const getAdminStats = async (): Promise<TAdminStats> => {
     const stats = await prisma.$transaction([
-        // Total users
         prisma.user.count(),
-        // Total providers
         prisma.user.count({ where: { role: 'PROVIDER' } }),
-        // Total customers
         prisma.user.count({ where: { role: 'CUSTOMER' } }),
-        // Total gear
         prisma.gearItem.count(),
-        // Total rentals
         prisma.rentalOrder.count(),
-        // Total revenue (from completed payments)
         prisma.payment.aggregate({
             where: { status: 'COMPLETED' },
-            _sum: {
-                amount: true,
-            },
+            _sum: { amount: true },
         }),
-        // Pending rentals (PLACED, CONFIRMED)
         prisma.rentalOrder.count({
             where: {
                 status: {
@@ -340,7 +351,6 @@ const getAdminStats = async (): Promise<TAdminStats> => {
                 },
             },
         }),
-        // Active rentals (PAID, PICKED_UP)
         prisma.rentalOrder.count({
             where: {
                 status: {
@@ -348,7 +358,6 @@ const getAdminStats = async (): Promise<TAdminStats> => {
                 },
             },
         }),
-        // Completed rentals (RETURNED)
         prisma.rentalOrder.count({
             where: {
                 status: 'RETURNED',
@@ -368,7 +377,6 @@ const getAdminStats = async (): Promise<TAdminStats> => {
         completedRentals: stats[8],
     };
 };
-
 
 export const adminServices = {
     getAllUsers,

@@ -4,6 +4,7 @@ enum Role {
   ADMIN
 }
 
+
 enum RentalOrderStatus {
   PLACED
   CONFIRMED
@@ -11,6 +12,11 @@ enum RentalOrderStatus {
   PICKED_UP
   RETURNED
   CANCELLED
+}
+
+enum PaymentMethod {
+  STRIPE
+  SSLCOMMERZ
 }
 
 enum PaymentStatus {

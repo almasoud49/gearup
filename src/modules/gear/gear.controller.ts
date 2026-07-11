@@ -8,7 +8,7 @@ import AppError from "../../errors/AppError";
 
 const createGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const payload = {
@@ -26,34 +26,28 @@ const createGear = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const getAllGear = catchAsync(async (req: Request, res: Response) => {
-    const rawFilters = pick(req.query, [
+    const query = pick(req.query, [
         'category',
         'brand',
         'minPrice',
         'maxPrice',
         'availability',
         'searchTerm',
+        'page',
+        'limit',
+        'sortBy',
+        'sortOrder',
     ]);
 
-        const filters: any = {
-        category: rawFilters.category as string | undefined,
-        brand: rawFilters.brand as string | undefined,
-        searchTerm: rawFilters.searchTerm as string | undefined,
-        availability: rawFilters.availability === 'true' ? true : 
-                     rawFilters.availability === 'false' ? false : undefined,
-        minPrice: rawFilters.minPrice ? Number(rawFilters.minPrice) : undefined,
-        maxPrice: rawFilters.maxPrice ? Number(rawFilters.maxPrice) : undefined,
-    };
-
-    const gearItems = await gearService.getAllGearFromDB(filters);
+    const result = await gearService.getAllGearFromDB(query);
 
     sendResponse(res, {
         success: true,
         statusCode: httpStatus.OK,
         message: "Gear items retrieved successfully!",
-        data: gearItems,
+        data: result.data,
+        meta: result.meta,
     });
 });
 
@@ -69,10 +63,9 @@ const getGearById = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const updateGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
@@ -86,10 +79,9 @@ const updateGear = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const deleteGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
@@ -105,7 +97,7 @@ const deleteGear = catchAsync(async (req: Request, res: Response) => {
 
 const getProviderGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const gearItems = await gearService.getProviderGearFromDB(req.user.id);

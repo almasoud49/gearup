@@ -1,47 +1,22 @@
-import express from 'express';
+import express, { Router } from 'express';
 import { gearController } from './gear.controller';
 import { auth, Role } from '../../middlewares/auth';
 import validateRequest from '../../middlewares/validateRequest';
 import { gearValidation } from './gear.validation';
 
-const router = express.Router();
+const router = Router();
 
+router.get('/',validateRequest(gearValidation.gearFiltersValidationSchema),
+gearController.getAllGear);
 
-router.get(
-    '/',
-    validateRequest(gearValidation.gearFiltersValidationSchema),
-    gearController.getAllGear
-);
+router.get('/:id', gearController.getGearById);
 
-router.get(
-    '/:id',
-    gearController.getGearById
-);
+router.post('/',auth(Role.PROVIDER, Role.ADMIN),validateRequest(gearValidation.createGearValidationSchema),gearController.createGear);
 
-router.post(
-    '/',
-    auth(Role.PROVIDER, Role.ADMIN),
-    validateRequest(gearValidation.createGearValidationSchema),
-    gearController.createGear
-);
+router.put('/:id',auth(Role.PROVIDER, Role.ADMIN),validateRequest(gearValidation.updateGearValidationSchema),gearController.updateGear);
 
-router.put(
-    '/:id',
-    auth(Role.PROVIDER, Role.ADMIN),
-    validateRequest(gearValidation.updateGearValidationSchema),
-    gearController.updateGear
-);
+router.delete('/:id',auth(Role.PROVIDER, Role.ADMIN),gearController.deleteGear);
 
-router.delete(
-    '/:id',
-    auth(Role.PROVIDER, Role.ADMIN),
-    gearController.deleteGear
-);
-
-router.get(
-    '/provider/gear',
-    auth(Role.PROVIDER),
-    gearController.getProviderGear
-);
+router.get('/provider/gear',auth(Role.PROVIDER),gearController.getProviderGear);
 
 export const gearRoutes = router;

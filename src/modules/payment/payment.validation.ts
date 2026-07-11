@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 const createPaymentValidationSchema = z.object({
-    body: z.object({
+    body: z.object({        
         rentalOrderId: z.string()
-            .uuid('Invalid rental order ID format')
+            .min(1, 'Rental order ID is required')
             .refine((val) => val !== undefined && val !== null && val !== '', {
                 message: 'Rental order ID is required'
             }),

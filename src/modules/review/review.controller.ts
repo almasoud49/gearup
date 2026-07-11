@@ -8,7 +8,7 @@ import AppError from "../../errors/AppError";
 
 const createReview = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const payload = {
@@ -27,22 +27,25 @@ const createReview = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllReviews = catchAsync(async (req: Request, res: Response) => {
-    const rawFilters = pick(req.query, ['rating', 'gearItemId', 'customerId', 'searchTerm']);
-    
-    const filters: any = {
-        rating: rawFilters.rating ? Number(rawFilters.rating) : undefined,
-        gearItemId: rawFilters.gearItemId as string | undefined,
-        customerId: rawFilters.customerId as string | undefined,
-        searchTerm: rawFilters.searchTerm as string | undefined,
-    };
+    const query = pick(req.query, [
+        'rating',
+        'gearItemId',
+        'customerId',
+        'searchTerm',
+        'page',
+        'limit',
+        'sortBy',
+        'sortOrder',
+    ]);
 
-    const reviews = await reviewService.getAllReviewsFromDB(filters);
+    const result = await reviewService.getAllReviewsFromDB(query);
 
     sendResponse(res, {
         success: true,
         statusCode: httpStatus.OK,
         message: "Reviews retrieved successfully!",
-        data: reviews,
+        data: result.data,
+        meta: result.meta,
     });
 });
 
@@ -58,7 +61,6 @@ const getReviewById = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const getGearReviews = catchAsync(async (req: Request, res: Response) => {
     const { gearId } = req.params;
     const result = await reviewService.getGearReviewsFromDB(gearId as string);
@@ -71,10 +73,9 @@ const getGearReviews = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const updateReview = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
@@ -90,7 +91,7 @@ const updateReview = catchAsync(async (req: Request, res: Response) => {
 
 const deleteReview = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;

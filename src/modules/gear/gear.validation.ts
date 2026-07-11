@@ -34,8 +34,9 @@ const createGearValidationSchema = z.object({
 
         specifications: z.any().optional(),
 
+       
         categoryId: z.string()
-            .uuid('Invalid category ID format')
+            .min(1, 'Category ID is required')
             .refine((val) => val !== undefined && val !== null && val !== '', {
                 message: 'Category ID is required'
             }),
@@ -72,9 +73,9 @@ const updateGearValidationSchema = z.object({
             .optional(),
 
         specifications: z.any().optional(),
-
+       
         categoryId: z.string()
-            .uuid('Invalid category ID format')
+            .min(1, 'Category ID is required')
             .optional(),
     }),
 });
@@ -87,6 +88,10 @@ const gearFiltersValidationSchema = z.object({
         maxPrice: z.string().transform(Number).optional(),
         availability: z.string().transform(val => val === 'true').optional(),
         searchTerm: z.string().optional(),
+        page: z.string().transform(Number).optional(),
+        limit: z.string().transform(Number).optional(),
+        sortBy: z.string().optional(),
+        sortOrder: z.enum(['asc', 'desc']).optional(),
     }),
 });
 

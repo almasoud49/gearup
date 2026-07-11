@@ -6,44 +6,16 @@ import { rentalValidation } from './rental.validation';
 
 const router = Router();
 
+router.post('/',auth(Role.CUSTOMER, Role.ADMIN),validateRequest(rentalValidation.createRentalValidationSchema),rentalController.createRental);
 
-router.post(
-    '/',
-    auth(Role.CUSTOMER, Role.ADMIN),
-    validateRequest(rentalValidation.createRentalValidationSchema),
-    rentalController.createRental
-);
+router.get('/',auth(Role.PROVIDER, Role.ADMIN),rentalController.getAllRentals);
 
-router.get(
-    '/',
-    auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN),
-    rentalController.getAllRentals
-);
+router.get('/stats/overview',auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN),rentalController.getRentalStats);
 
+router.get('/my-rentals',auth(Role.CUSTOMER),rentalController.getUserRentals);
 
-router.get(
-    '/my-rentals',
-    auth(Role.CUSTOMER),
-    rentalController.getUserRentals
-);
+router.get( '/:id',auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN),rentalController.getRentalById);
 
-router.get(
-    '/:id',
-    auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN),
-    rentalController.getRentalById
-);
-
-
-router.patch(
-    '/:id/cancel',
-    auth(Role.CUSTOMER),
-    rentalController.cancelRental
-);
-
-router.get(
-    '/stats/overview',
-    auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN),
-    rentalController.getRentalStats
-);
+router.patch('/:id/cancel',auth(Role.CUSTOMER),rentalController.cancelRental);
 
 export const rentalRoutes = router;

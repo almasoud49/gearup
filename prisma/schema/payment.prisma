@@ -5,15 +5,14 @@ model Payment {
   method           PaymentMethod
   status           PaymentStatus   @default(PENDING)
   paidAt           DateTime?
+  isDeleted        Boolean         @default(false)
+  deletedAt        DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   rentalOrderId    String          @unique
 
-  rentalOrder      RentalOrder     @relation(fields: [rentalOrderId], references: [id], onDelete: Cascade)
-}
+  rentalOrder      RentalOrder     @relation(fields: [rentalOrderId], references: [id])
 
-enum PaymentMethod {
-  STRIPE
-  SSLCOMMERZ
+  
 }

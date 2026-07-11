@@ -4,17 +4,19 @@ model RentalOrder {
   endDate          DateTime
   totalPrice       Float
   status           RentalOrderStatus @default(PLACED)
+  isDeleted        Boolean           @default(false)
+  deletedAt        DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   customerId       String
   gearItemId       String
 
-  customer         User              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer         User              @relation(fields: [customerId], references: [id])
   gearItem         GearItem          @relation(fields: [gearItemId], references: [id])
-  payment          Payment?
- 
-  reviewid String?
-  review           Review? @relation(fields: [reviewid], references: [id])
+  payment          Payment?  
 
+  review           Review?           @relation("RentalOrderToReview")
+
+  
 }

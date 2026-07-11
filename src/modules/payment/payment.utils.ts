@@ -66,7 +66,7 @@ export const handlePaymentIntentSucceeded = async (paymentIntent: Stripe.Payment
             data: { status: 'PAID' },
         });
 
-        console.log('✅ Payment and rental updated');
+        console.log('Payment and rental updated');
 
     } catch (error) {
         console.error(' Error:', error);

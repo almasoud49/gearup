@@ -1,6 +1,11 @@
+import { Prisma } from "../../../generated/prisma/client";
+import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
 import { prisma } from "../../lib/prisma";
-import { TRentalOrder, TRentalFilters } from "./rental.interface";
+import { TRentalOrder } from "./rental.interface";
+import { getPagination, createMeta } from "../../utils/pagination";
+import { validateGear, validateRental} from "../../utils/common";
+import { findUserById } from "../../utils/user";
 
 const createRentalIntoDB = async (payload: TRentalOrder) => {
     const { startDate, endDate, gearItemId, customerId } = payload;
@@ -9,63 +14,35 @@ const createRentalIntoDB = async (payload: TRentalOrder) => {
     const end = new Date(endDate);
     const now = new Date();
 
-    // 1. Validate dates
     if (start < now) {
-        throw new AppError(400, 'Start date cannot be in the past!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Start date cannot be in the past!');
     }
 
     if (end <= start) {
-        throw new AppError(400, 'End date must be after start date!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'End date must be after start date!');
     }
 
-    // 2. Check if gear exists and is available
-    const gear = await prisma.gearItem.findUnique({
-        where: { id: gearItemId },
-        include: {
-            provider: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    isSuspended: true,
-                },
-            },
-        },
-    });
-
-    if (!gear) {
-        throw new AppError(404, 'Gear item not found!');
-    }
+    const gear = await validateGear(gearItemId);
 
     if (!gear.availability || gear.stockQuantity < 1) {
-        throw new AppError(400, 'Gear item is not available for rent!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Gear item is not available for rent!');
     }
 
-    // 3. Check if gear belongs to the same customer
     if (gear.providerId === customerId) {
-        throw new AppError(400, 'You cannot rent your own gear!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'You cannot rent your own gear!');
     }
 
-    // 4. Check if provider is suspended
     if (gear.provider.isSuspended) {
-        throw new AppError(403, 'Provider account is suspended!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Provider account is suspended!');
     }
 
-    // 5. Check if customer exists and is not suspended
-    const customer = await prisma.user.findUnique({
-        where: { id: customerId },
-        select: { id: true, isSuspended: true },
-    });
-
-    if (!customer) {
-        throw new AppError(404, 'Customer not found!');
-    }
+    const customer = await findUserById(customerId);
 
     if (customer.isSuspended) {
-        throw new AppError(403, 'Your account has been suspended!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Your account has been suspended!');
     }
 
-    // 6. Check for overlapping rentals
+    // Check overlapping rentals
     const overlappingRental = await prisma.rentalOrder.findFirst({
         where: {
             gearItemId,
@@ -96,14 +73,12 @@ const createRentalIntoDB = async (payload: TRentalOrder) => {
     });
 
     if (overlappingRental) {
-        throw new AppError(409, 'This gear is already booked for the selected dates!');
+        throw new AppError(httpStatus.CONFLICT, 'This gear is already booked for the selected dates!');
     }
 
-    // 7. Calculate total price
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const totalPrice = gear.pricePerDay * days;
 
-    // 8. Create rental order
     const rental = await prisma.rentalOrder.create({
         data: {
             startDate: start,
@@ -136,7 +111,6 @@ const createRentalIntoDB = async (payload: TRentalOrder) => {
         },
     });
 
-    // 9. Update gear stock
     await prisma.gearItem.update({
         where: { id: gearItemId },
         data: {
@@ -148,49 +122,69 @@ const createRentalIntoDB = async (payload: TRentalOrder) => {
     return rental;
 };
 
-// ==================== GET ALL RENTALS ====================
-const getAllRentalsFromDB = async (filters: TRentalFilters = {}) => {
-    const { status, customerId, providerId, searchTerm } = filters;
+const getAllRentalsFromDB = async (query: any, userId: string, userRole: string) => {
+    const { limit, page, skip, sortBy, sortOrder } = getPagination(query);
 
-    const whereConditions: any = {};
+    const andConditions: Prisma.RentalOrderWhereInput[] = [];
 
-    if (status) {
-        whereConditions.status = status;
+    if (query.status) {
+        andConditions.push({ status: query.status });
     }
 
-    if (customerId) {
-        whereConditions.customerId = customerId;
-    }
-
-    if (providerId) {
-        whereConditions.gearItem = {
-            providerId: providerId,
-        };
-    }
-
-    if (searchTerm) {
-        whereConditions.OR = [
-            {
-                gearItem: {
-                    name: {
-                        contains: searchTerm,
-                        mode: 'insensitive',
+    if (query.searchTerm) {
+        andConditions.push({
+            OR: [
+                {
+                    gearItem: {
+                        name: {
+                            contains: query.searchTerm,
+                            mode: "insensitive",
+                        },
                     },
                 },
-            },
-            {
-                customer: {
-                    name: {
-                        contains: searchTerm,
-                        mode: 'insensitive',
+                {
+                    customer: {
+                        name: {
+                            contains: query.searchTerm,
+                            mode: "insensitive",
+                        },
                     },
                 },
+            ],
+        });
+    }
+
+    if (userRole === "CUSTOMER") {
+        andConditions.push({ customerId: userId });
+    } else if (userRole === "PROVIDER") {
+        andConditions.push({
+            gearItem: {
+                providerId: userId,
             },
-        ];
+        });
+    }
+
+    if (query.startDate) {
+        andConditions.push({
+            startDate: {
+                gte: new Date(query.startDate),
+            },
+        });
+    }
+
+    if (query.endDate) {
+        andConditions.push({
+            endDate: {
+                lte: new Date(query.endDate),
+            },
+        });
     }
 
     const rentals = await prisma.rentalOrder.findMany({
-        where: whereConditions,
+        where: { AND: andConditions },
+        take: limit,
+        skip: skip,
+        orderBy: { [sortBy]: sortOrder },
         include: {
             customer: {
                 select: {
@@ -214,15 +208,18 @@ const getAllRentalsFromDB = async (filters: TRentalFilters = {}) => {
             payment: true,
             review: true,
         },
-        orderBy: {
-            createdAt: 'desc',
-        },
     });
 
-    return rentals;
+    const totalRentalCount = await prisma.rentalOrder.count({
+        where: { AND: andConditions },
+    });
+
+    return {
+        data: rentals,
+        meta: createMeta(page, limit, totalRentalCount),
+    };
 };
 
-// ==================== GET RENTAL BY ID ====================
 const getRentalByIdFromDB = async (id: string, userId: string, userRole: string) => {
     const rental = await prisma.rentalOrder.findUnique({
         where: { id },
@@ -262,24 +259,22 @@ const getRentalByIdFromDB = async (id: string, userId: string, userRole: string)
     });
 
     if (!rental) {
-        throw new AppError(404, 'Rental order not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'Rental order not found!');
     }
 
-    // Check authorization
     if (userRole === 'CUSTOMER' && rental.customerId !== userId) {
-        throw new AppError(403, 'You are not authorized to view this rental!');
+        throw new AppError(httpStatus.FORBIDDEN, 'You are not authorized to view this rental!');
     }
 
     if (userRole === 'PROVIDER' && rental.gearItem.providerId !== userId) {
-        throw new AppError(403, 'You are not authorized to view this rental!');
+        throw new AppError(httpStatus.FORBIDDEN, 'You are not authorized to view this rental!');
     }
 
     return rental;
 };
 
-// ==================== GET USER RENTALS ====================
 const getUserRentalsFromDB = async (userId: string) => {
-    const rentals = await prisma.rentalOrder.findMany({
+    return await prisma.rentalOrder.findMany({
         where: { customerId: userId },
         include: {
             gearItem: {
@@ -301,32 +296,19 @@ const getUserRentalsFromDB = async (userId: string) => {
             createdAt: 'desc',
         },
     });
-
-    return rentals;
 };
 
-// ==================== CANCEL RENTAL ====================
 const cancelRentalFromDB = async (id: string, userId: string) => {
-    const rental = await prisma.rentalOrder.findUnique({
-        where: { id },
-        include: {
-            gearItem: true,
-        },
-    });
-
-    if (!rental) {
-        throw new AppError(404, 'Rental order not found!');
-    }
+    const rental = await validateRental(id);
 
     if (rental.customerId !== userId) {
-        throw new AppError(403, 'You are not authorized to cancel this rental!');
+        throw new AppError(httpStatus.FORBIDDEN, 'You are not authorized to cancel this rental!');
     }
 
     if (rental.status !== 'PLACED') {
-        throw new AppError(400, `Cannot cancel rental with status: ${rental.status}`);
+        throw new AppError(httpStatus.BAD_REQUEST, `Cannot cancel rental with status: ${rental.status}`);
     }
 
-    // Update rental status
     const cancelledRental = await prisma.rentalOrder.update({
         where: { id },
         data: { status: 'CANCELLED' },
@@ -353,7 +335,6 @@ const cancelRentalFromDB = async (id: string, userId: string) => {
         },
     });
 
-    // Restore gear stock
     await prisma.gearItem.update({
         where: { id: rental.gearItemId },
         data: {
@@ -365,7 +346,6 @@ const cancelRentalFromDB = async (id: string, userId: string) => {
     return cancelledRental;
 };
 
-// ==================== RENTAL STATS ====================
 const getRentalStatsFromDB = async (userId: string, userRole: string) => {
     let whereCondition: any = {};
 

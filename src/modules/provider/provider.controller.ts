@@ -4,11 +4,11 @@ import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { providerService } from "./provider.service";
 import AppError from "../../errors/AppError";
-
+import { string } from "zod";
 
 const addGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const gear = await providerService.addGearIntoDB(req.body, req.user.id);
@@ -21,16 +21,15 @@ const addGear = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const updateGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
 
     if (!id) {
-        throw new AppError(400, 'Gear ID is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Gear ID is required!');
     }
 
     const gear = await providerService.updateGearIntoDB(id as string, req.body, req.user.id);
@@ -43,16 +42,15 @@ const updateGear = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const deleteGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
 
     if (!id) {
-        throw new AppError(400, 'Gear ID is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Gear ID is required!');
     }
 
     await providerService.deleteGearFromDB(id as string, req.user.id);
@@ -67,7 +65,7 @@ const deleteGear = catchAsync(async (req: Request, res: Response) => {
 
 const getProviderOrders = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const orders = await providerService.getProviderOrdersFromDB(req.user.id);
@@ -82,18 +80,18 @@ const getProviderOrders = catchAsync(async (req: Request, res: Response) => {
 
 const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
     const { status } = req.body;
 
     if (!id) {
-        throw new AppError(400, 'Order ID is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Order ID is required!');
     }
 
     if (!status) {
-        throw new AppError(400, 'Status is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Status is required!');
     }
 
     const order = await providerService.updateOrderStatusIntoDB(id as string, req.user.id, status);
@@ -108,7 +106,7 @@ const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
 
 const getProviderStats = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const stats = await providerService.getProviderStatsFromDB(req.user.id);

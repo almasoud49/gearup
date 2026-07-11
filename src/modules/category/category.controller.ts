@@ -17,7 +17,6 @@ const createCategory = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
-
 const getAllCategories = catchAsync(async (req: Request, res: Response) => {
     const filters = pick(req.query, ['searchTerm']);
     const categories = await categoryService.getAllCategoriesFromDB(filters);
@@ -29,7 +28,6 @@ const getAllCategories = catchAsync(async (req: Request, res: Response) => {
         data: categories,
     });
 });
-
 
 const getCategoryById = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;

@@ -2,14 +2,19 @@ model Review {
   id               String          @id @default(cuid())
   rating           Int
   comment          String?
+  isDeleted        Boolean         @default(false)
+  deletedAt        DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   customerId       String
   gearItemId       String
+  rentalOrderId    String?         @unique
 
-  customer         User            @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  gearItem         GearItem        @relation(fields: [gearItemId], references: [id], onDelete: Cascade)
+  customer         User            @relation(fields: [customerId], references: [id])
+  gearItem         GearItem        @relation(fields: [gearItemId], references: [id])  
+ 
+  rentalOrder      RentalOrder?    @relation("RentalOrderToReview", fields: [rentalOrderId], references: [id])
 
-  rentalOrders RentalOrder[]
+ 
 }

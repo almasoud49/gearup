@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import httpStatus from "http-status";
 import config from "../../config";
 import AppError from "../../errors/AppError";
 import { jwtUtils } from "../../utils/jwt";
@@ -18,17 +19,17 @@ const loginUser = async (payload: TLoginUser): Promise<TAuthResponse> => {
     });
 
     if (!user) {
-        throw new AppError(404, 'User not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
     }
 
     if (user.isSuspended) {
-        throw new AppError(403, 'Your account has been suspended!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Your account has been suspended!');
     }
    
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-        throw new AppError(401, 'Invalid credentials!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid credentials!');
     }
 
     const jwtPayload: TJwtPayload = {
@@ -77,7 +78,7 @@ const refreshToken = async (refreshToken: string): Promise<TRefreshTokenResponse
     );
 
     if (!verifiedRefreshToken.success) {
-        throw new AppError(401, verifiedRefreshToken.error || 'Invalid or expired refresh token!');
+        throw new AppError(httpStatus.UNAUTHORIZED, verifiedRefreshToken.error || 'Invalid or expired refresh token!');
     }
 
     const { id } = verifiedRefreshToken.data as JwtPayload;
@@ -94,11 +95,11 @@ const refreshToken = async (refreshToken: string): Promise<TRefreshTokenResponse
     });
 
     if (!user) {
-        throw new AppError(404, 'User not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
     }
 
     if (user.isSuspended) {
-        throw new AppError(403, 'Your account has been suspended!');
+        throw new AppError(httpStatus.FORBIDDEN, 'Your account has been suspended!');
     }
 
     const jwtPayload: TJwtPayload = {

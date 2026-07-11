@@ -1,23 +1,21 @@
-import AppError from "../../errors/AppError";
-import { prisma } from "../../lib/prisma";
-import { TCategory, TCategoryFilters } from "./category.interface";
+import httpStatus from 'http-status';
+import AppError from '../../errors/AppError';
+import { prisma } from '../../lib/prisma';
+import { TCategory, TCategoryFilters } from './category.interface';
 
-
-const createCategoryIntoDB = async (payload: TCategory) => {    
+const createCategoryIntoDB = async (payload: TCategory) => {
     const existingCategory = await prisma.category.findUnique({
         where: { name: payload.name },
     });
 
     if (existingCategory) {
-        throw new AppError(409, 'Category already exists!');
+        throw new AppError(httpStatus.CONFLICT, 'Category already exists!');
     }
-    const category = await prisma.category.create({
+
+    return await prisma.category.create({
         data: payload,
     });
-
-    return category;
 };
-
 
 const getAllCategoriesFromDB = async (filters: TCategoryFilters = {}) => {
     const { searchTerm } = filters;
@@ -82,19 +80,19 @@ const getCategoryByIdFromDB = async (id: string) => {
     });
 
     if (!category) {
-        throw new AppError(404, 'Category not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'Category not found!');
     }
 
     return category;
 };
 
-const updateCategoryIntoDB = async (id: string, payload: Partial<TCategory>) => { 
+const updateCategoryIntoDB = async (id: string, payload: Partial<TCategory>) => {
     const category = await prisma.category.findUnique({
         where: { id },
     });
 
     if (!category) {
-        throw new AppError(404, 'Category not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'Category not found!');
     }
 
     if (payload.name) {
@@ -103,42 +101,35 @@ const updateCategoryIntoDB = async (id: string, payload: Partial<TCategory>) => 
         });
 
         if (existingCategory && existingCategory.id !== id) {
-            throw new AppError(409, 'Category name already exists!');
+            throw new AppError(httpStatus.CONFLICT, 'Category name already exists!');
         }
     }
 
-    const updatedCategory = await prisma.category.update({
+    return await prisma.category.update({
         where: { id },
         data: payload,
     });
-
-    return updatedCategory;
 };
 
-const deleteCategoryFromDB = async (id: string) => {   
+const deleteCategoryFromDB = async (id: string) => {
     const category = await prisma.category.findUnique({
         where: { id },
         include: {
             gearItems: {
-                select: {
-                    id: true,
-                },
+                select: { id: true },
             },
         },
     });
 
     if (!category) {
-        throw new AppError(404, 'Category not found!');
+        throw new AppError(httpStatus.NOT_FOUND, 'Category not found!');
     }
 
     if (category.gearItems.length > 0) {
-        throw new AppError(400, 'Cannot delete category with existing gear items!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Cannot delete category with existing gear items!');
     }
 
-    await prisma.category.delete({
-        where: { id },
-    });
-
+    await prisma.category.delete({ where: { id } });
     return null;
 };
 

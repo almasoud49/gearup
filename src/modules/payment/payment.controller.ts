@@ -7,13 +7,13 @@ import AppError from "../../errors/AppError";
 
 const createPayment = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { rentalOrderId } = req.body;
 
     if (!rentalOrderId) {
-        throw new AppError(400, 'Rental order ID is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Rental order ID is required!');
     }
 
     const result = await paymentService.createPaymentIntoDB(rentalOrderId);
@@ -28,13 +28,13 @@ const createPayment = catchAsync(async (req: Request, res: Response) => {
 
 const confirmPayment = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { paymentIntentId } = req.body;
 
     if (!paymentIntentId) {
-        throw new AppError(400, 'Payment intent ID is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Payment intent ID is required!');
     }
 
     const result = await paymentService.confirmPaymentIntoDB(paymentIntentId);
@@ -49,7 +49,7 @@ const confirmPayment = catchAsync(async (req: Request, res: Response) => {
 
 const getPaymentHistory = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const payments = await paymentService.getPaymentHistoryFromDB(req.user.id);
@@ -64,13 +64,13 @@ const getPaymentHistory = catchAsync(async (req: Request, res: Response) => {
 
 const getPaymentDetails = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
-        throw new AppError(401, 'You are not authorized!');
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
     }
 
     const { id } = req.params;
 
     if (!id) {
-        throw new AppError(400, 'Payment ID is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Payment ID is required!');
     }
 
     const payment = await paymentService.getPaymentDetailsFromDB(id as string);
@@ -83,17 +83,38 @@ const getPaymentDetails = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const getPaymentStatus = catchAsync(async (req: Request, res: Response) => {
+    if (!req.user) {
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+    }
+
+    const { rentalOrderId } = req.params;
+
+    if (!rentalOrderId) {
+        throw new AppError(httpStatus.BAD_REQUEST, 'Rental order ID is required!');
+    }
+
+    const payment = await paymentService.getPaymentStatusFromDB(rentalOrderId as string);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Payment status retrieved successfully!",
+        data: payment,
+    });
+});
+
 const handleWebhook = catchAsync(async (req: Request, res: Response) => {
     const signature = req.headers['stripe-signature'] as string;
     const payload = req.body;
 
     if (!signature) {
-        throw new AppError(400, 'Stripe signature is required!');
+        throw new AppError(httpStatus.BAD_REQUEST, 'Stripe signature is required!');
     }
 
     await paymentService.handleWebhook(payload, signature);
 
-    res.status(200).json({
+    res.status(httpStatus.OK).json({
         success: true,
         message: 'Webhook processed successfully!',
     });
@@ -104,5 +125,6 @@ export const paymentController = {
     confirmPayment,
     getPaymentHistory,
     getPaymentDetails,
+    getPaymentStatus,
     handleWebhook,
 };
