@@ -7,10 +7,11 @@
   "type": "module",
   "main": "server.ts",
   "scripts": {
-    "start": "node dist/server.mjs",
+    "start": "node dist/server.js",
     "dev": "tsx watch ./src/server.ts",
     "vercel-build": "tsup",
     "build": "tsup",
+    "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
