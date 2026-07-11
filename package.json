@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "build": "prisma migrate deploy && tsx prisma/seed.ts && tsc",
-    "vercel-build": "PRISMA_DISABLE_CONFIG=true prisma generate --schema=./prisma/schema/schema.prisma && tsc src/server.ts --outDir dist",
+    "vercel-build": "PRISMA_DISABLE_CONFIG=true prisma generate --schema=./prisma/schema/schema.prisma && tsc --project tsconfig.json",
     "dev": "tsx watch src/server.ts"
   },
   "devDependencies": {
