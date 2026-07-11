@@ -6,8 +6,8 @@
 "scripts": {
   "start": "node dist/server.js",
   "build": "prisma migrate deploy --schema=./prisma/schema && tsx prisma/seed.ts && tsc",
-  "dev": "tsx watch src/server.ts",
-  "postinstall": "prisma generate --schema=./prisma/schema"
+  "vercel-build": "prisma generate --schema=./prisma/schema && tsc",
+  "dev": "tsx watch src/server.ts"
 },
   "engines": {
     "node": ">=18.0.0"
