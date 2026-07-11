@@ -4,10 +4,10 @@ import { stripe } from "../../lib/stripe";
 import AppError from "../../errors/AppError";
 import { handleCheckoutCompleted, handlePaymentIntentSucceeded } from "./payment.utils";
 import { TPaymentResult, TConfirmPaymentResult, TPaymentHistoryItem } from "./payment.interface";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 
 const createPaymentIntoDB = async (rentalOrderId: string): Promise<TPaymentResult> => {
-    const transactionResult = await prisma.$transaction(async (tx) => {
+    const transactionResult = await prisma.$transaction(async (tx: any) => {
         const rental = await tx.rentalOrder.findUnique({
             where: { id: rentalOrderId },
             include: {

@@ -1,11 +1,12 @@
-import { Prisma } from "../../../generated/prisma/client";
+
 import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 import { TGearItem } from "./gear.interface";
 import { getPagination, createMeta } from "../../utils/pagination";
 import { buildSearchConditions } from "../../utils/search";
 import { validateCategory, validateGear, validateGearBasic } from "../../utils/common";
+import { Prisma } from "../../../generated/prisma/client";
 
 const createGearIntoDB = async (payload: TGearItem) => {
     const { categoryId, providerId, name, stockQuantity, ...rest } = payload;

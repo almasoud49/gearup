@@ -2,8 +2,7 @@ import express, { Router } from 'express';
 import { userController } from './user.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { userValidation } from './user.validation';
-import { Role } from '../../../generated/prisma/enums';
-import { auth } from '../../middlewares/auth';
+import { auth, Role } from '../../middlewares/auth';
 
 
 const router = Router();

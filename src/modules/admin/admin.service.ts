@@ -1,7 +1,7 @@
 import { Prisma } from "../../../generated/prisma/client";
 import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 import { TUserStatusUpdate, TUserRoleUpdate, TAdminStats } from "./admin.interface";
 import { getPagination, createMeta } from "../../utils/pagination";
 import { findUserById } from "../../utils/user";

@@ -3,7 +3,7 @@ import httpStatus from "http-status";
 import config from "../../config";
 import AppError from "../../errors/AppError";
 import { TRegisterUser, TUpdateUser } from "./user.interface";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 import { findUserById } from "../../utils/user";
 
 const registerUserIntoDB = async (payload: TRegisterUser) => {

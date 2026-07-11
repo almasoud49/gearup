@@ -2,7 +2,7 @@ import httpStatus from "http-status";
 import { gearService } from "../gear/gear.service";
 import { TProviderGear, TUpdateGear } from "./provider.interface";
 import { validateRental, validateProvider } from "../../utils/common";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 import AppError from "../../errors/AppError";
 
 const addGearIntoDB = async (payload: TProviderGear, providerId: string) => {

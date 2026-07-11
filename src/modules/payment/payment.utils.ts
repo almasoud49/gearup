@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 
 
 export const handleCheckoutCompleted = async (session: Stripe.Checkout.Session) => {

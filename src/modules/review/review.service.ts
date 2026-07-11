@@ -1,7 +1,7 @@
 import { Prisma } from "../../../generated/prisma/client";
 import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 import { TReview } from "./review.interface";
 import { getPagination, createMeta } from "../../utils/pagination";
 import { validateGear } from "../../utils/common";
@@ -206,7 +206,7 @@ const getGearReviewsFromDB = async (gearItemId: string) => {
         },
     });
 
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const totalRating = reviews.reduce((sum: any, review: { rating: any; }) => sum + review.rating, 0);
     const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
 
     return {

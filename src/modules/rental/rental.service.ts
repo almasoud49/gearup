@@ -1,11 +1,12 @@
-import { Prisma } from "../../../generated/prisma/client";
+
 import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 import { TRentalOrder } from "./rental.interface";
 import { getPagination, createMeta } from "../../utils/pagination";
 import { validateGear, validateRental} from "../../utils/common";
 import { findUserById } from "../../utils/user";
+import { Prisma } from "../../../generated/prisma/client";
 
 const createRentalIntoDB = async (payload: TRentalOrder) => {
     const { startDate, endDate, gearItemId, customerId } = payload;
@@ -42,7 +43,7 @@ const createRentalIntoDB = async (payload: TRentalOrder) => {
         throw new AppError(httpStatus.FORBIDDEN, 'Your account has been suspended!');
     }
 
-    // Check overlapping rentals
+    
     const overlappingRental = await prisma.rentalOrder.findFirst({
         where: {
             gearItemId,

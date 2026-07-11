@@ -10,7 +10,7 @@ import {
     TRefreshTokenResponse 
 } from "./auth.interface";
 import { JwtPayload } from "jsonwebtoken";
-import { prisma } from "../../lib/prisma";
+import {prisma} from "../../lib/prisma";
 
 const loginUser = async (payload: TLoginUser): Promise<TAuthResponse> => {
     const { email, password } = payload;
