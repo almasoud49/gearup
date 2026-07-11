@@ -1,6 +1,7 @@
 {
   "name": "gearup-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "GearUp - Sports & Outdoor Equipment Rental API",
   "main": "dist/server.js",
   "scripts": {
