@@ -1,7 +1,6 @@
 import express, { Router } from 'express';
 import { providerController } from './provider.controller';
 import { auth, Role } from '../../middlewares/auth';
-import { gearController } from '../gear/gear.controller';
 import { providerValidation } from './provider.validation';
 import validateRequest from '../../middlewares/validateRequest';
 

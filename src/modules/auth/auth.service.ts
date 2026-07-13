@@ -3,13 +3,13 @@ import httpStatus from "http-status";
 import config from "../../config";
 import AppError from "../../errors/AppError";
 import { jwtUtils } from "../../utils/jwt";
-import { 
+import type { 
     TLoginUser, 
     TJwtPayload, 
     TAuthResponse, 
     TRefreshTokenResponse 
 } from "./auth.interface";
-import { JwtPayload } from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
 import {prisma} from "../../lib/prisma";
 
 const loginUser = async (payload: TLoginUser): Promise<TAuthResponse> => {
@@ -51,23 +51,18 @@ const loginUser = async (payload: TLoginUser): Promise<TAuthResponse> => {
         config.jwt_refresh_expires_in as string
     );
   
-    const userWithoutPassword = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            isSuspended: true,
-            createdAt: true,
-            updatedAt: true,            
-        },
-    });
-
     return {
         accessToken,
         refreshToken,
-        user: userWithoutPassword!,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            isSuspended: user.isSuspended,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        },
     };
 };
 

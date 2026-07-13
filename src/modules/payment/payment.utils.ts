@@ -14,9 +14,16 @@ export const handleCheckoutCompleted = async (session: Stripe.Checkout.Session) 
         return;
     }
 
+    const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
+
+    if (!paymentIntentId) {
+        console.log('No payment intent ID in session');
+        return;
+    }
+
     try {        
         const payment = await prisma.payment.update({
-            where: { transactionId: session.id },
+            where: { transactionId: paymentIntentId },
             data: {
                 status: 'COMPLETED',
                 paidAt: new Date(),

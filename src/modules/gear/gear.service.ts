@@ -2,7 +2,7 @@
 import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
 import {prisma} from "../../lib/prisma";
-import { TGearItem } from "./gear.interface";
+import type { TGearItem } from "./gear.interface";
 import { getPagination, createMeta } from "../../utils/pagination";
 import { buildSearchConditions } from "../../utils/search";
 import { validateCategory, validateGear, validateGearBasic } from "../../utils/common";
@@ -51,7 +51,7 @@ const createGearIntoDB = async (payload: TGearItem) => {
             name,
             description: rest.description,
             pricePerDay: rest.pricePerDay,
-            brand: rest.brand,
+            brand: rest.brand ?? null,
             stockQuantity: finalStockQuantity,
             availability: finalStockQuantity > 0,
             images: rest.images,

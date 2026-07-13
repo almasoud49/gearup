@@ -2,7 +2,7 @@ import { Prisma } from "../../../generated/prisma/client";
 import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
 import {prisma} from "../../lib/prisma";
-import { TReview } from "./review.interface";
+import type { TReview } from "./review.interface";
 import { getPagination, createMeta } from "../../utils/pagination";
 import { validateGear } from "../../utils/common";
 import { findUserById } from "../../utils/user";
@@ -43,9 +43,10 @@ const createReviewIntoDB = async (payload: TReview) => {
     return await prisma.review.create({
         data: {
             rating,
-            comment,
+            comment: comment ?? null,
             customerId,
             gearItemId,
+            rentalOrderId: rental.id,
         },
         include: {
             customer: {

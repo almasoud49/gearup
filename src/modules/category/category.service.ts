@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { prisma } from '../../lib/prisma';
-import { TCategory, TCategoryFilters } from './category.interface';
+import type { TCategory, TCategoryFilters } from './category.interface';
 
 const createCategoryIntoDB = async (payload: TCategory) => {
     const existingCategory = await prisma.category.findUnique({

@@ -1,11 +1,7 @@
 node_modules
 .git
-*.md
 .gitignore
 .env
 .env.local
 .env.*.local
-src
-tsconfig.json
-vercel.json
-prisma.config.ts
+generated

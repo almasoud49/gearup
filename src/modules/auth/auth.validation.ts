@@ -19,11 +19,7 @@ const loginValidationSchema = z.object({
 
 const refreshTokenValidationSchema = z.object({
     body: z.object({
-        refreshToken: z.string()
-            .min(1, 'Refresh token is required')
-            .refine((val) => val !== undefined && val !== null && val !== '', { 
-                message: 'Refresh token is required' 
-            }),
+        refreshToken: z.string().optional(),
     }),
 });
 

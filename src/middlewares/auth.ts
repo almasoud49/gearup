@@ -1,9 +1,9 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import httpStatus from "http-status";
 import { catchAsync } from "../utils/catchAsync";
 import { jwtUtils } from "../utils/jwt";
 import config from "../config";
-import { JwtPayload } from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import AppError from "../errors/AppError";
 import { Role } from "../../generated/prisma/enums";

@@ -1,9 +1,12 @@
+# .vercelignore
 node_modules
-dist
-generated
 .env
-/generated/prisma
-
-/../generated/prisma
-.vercel
 .env*
+.vercel
+generated
+/generated/prisma
+/../generated/prisma
+*.log
+*.md
+.git
+.gitignore

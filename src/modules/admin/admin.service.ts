@@ -2,7 +2,7 @@ import { Prisma } from "../../../generated/prisma/client";
 import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
 import {prisma} from "../../lib/prisma";
-import { TUserStatusUpdate, TUserRoleUpdate, TAdminStats } from "./admin.interface";
+import type { TUserStatusUpdate, TUserRoleUpdate, TAdminStats } from "./admin.interface";
 import { getPagination, createMeta } from "../../utils/pagination";
 import { findUserById } from "../../utils/user";
 
@@ -188,12 +188,28 @@ const deleteUser = async (userId: string) => {
         throw new AppError(httpStatus.BAD_REQUEST, 'Cannot delete user with active rentals!');
     }
 
+    await prisma.payment.deleteMany({
+        where: { rentalOrder: { customerId: userId } },
+    });
+
     await prisma.review.deleteMany({
         where: { customerId: userId },
     });
 
     await prisma.rentalOrder.deleteMany({
         where: { customerId: userId },
+    });
+
+    await prisma.payment.deleteMany({
+        where: { rentalOrder: { gearItem: { providerId: userId } } },
+    });
+
+    await prisma.review.deleteMany({
+        where: { gearItem: { providerId: userId } },
+    });
+
+    await prisma.rentalOrder.deleteMany({
+        where: { gearItem: { providerId: userId } },
     });
 
     await prisma.gearItem.deleteMany({

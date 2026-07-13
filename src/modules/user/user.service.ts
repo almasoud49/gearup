@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import httpStatus from "http-status";
 import config from "../../config";
 import AppError from "../../errors/AppError";
-import { TRegisterUser, TUpdateUser } from "./user.interface";
+import type { TRegisterUser, TUpdateUser } from "./user.interface";
 import {prisma} from "../../lib/prisma";
 import { findUserById } from "../../utils/user";
 
@@ -76,9 +76,13 @@ const updateMyProfileInDB = async (userId: string, payload: TUpdateUser) => {
         }
     }
 
+    const updateData: { name?: string; email?: string } = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+
     return await prisma.user.update({
         where: { id: userId },
-        data: { name, email },
+        data: updateData,
         select: {
             id: true,
             name: true,

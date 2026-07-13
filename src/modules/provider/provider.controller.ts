@@ -1,10 +1,9 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import httpStatus from "http-status";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import { providerService } from "./provider.service";
 import AppError from "../../errors/AppError";
-import { string } from "zod";
 
 const addGear = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {

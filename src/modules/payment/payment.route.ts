@@ -7,7 +7,7 @@ import { paymentValidation } from './payment.validation';
 const router = Router();
 
 
-router.post( '/webhook',express.raw({ type: 'application/json' }),paymentController.handleWebhook);
+router.post( '/webhook',paymentController.handleWebhook);
 
 router.post( '/create',auth(Role.CUSTOMER, Role.ADMIN),validateRequest(paymentValidation.createPaymentValidationSchema),paymentController.createPayment);
 
