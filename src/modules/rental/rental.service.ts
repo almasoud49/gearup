@@ -14,9 +14,9 @@ const createRentalIntoDB = async (payload: TRentalOrder) => {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const now = new Date();
+    const startOfTodayUTC = new Date(new Date().setUTCHours(0, 0, 0, 0));
 
-    if (start < now) {
+    if (start < startOfTodayUTC) {
         throw new AppError(httpStatus.BAD_REQUEST, 'Start date cannot be in the past!');
     }
 
