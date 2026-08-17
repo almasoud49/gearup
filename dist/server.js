@@ -1933,6 +1933,62 @@ var cancelRentalFromDB = async (id, userId) => {
   });
   return cancelledRental;
 };
+var RENTAL_STATUS_TRANSITIONS = {
+  PLACED: ["CONFIRMED"],
+  CONFIRMED: [],
+  PAID: ["PICKED_UP"],
+  PICKED_UP: ["RETURNED"],
+  RETURNED: [],
+  CANCELLED: []
+};
+var updateRentalStatusFromDB = async (id, status, userId, userRole) => {
+  const rental = await validateRental(id);
+  if (userRole === "PROVIDER" && rental.gearItem.providerId !== userId) {
+    throw new AppError_default(httpStatus11.FORBIDDEN, "You are not authorized to update this rental!");
+  }
+  const allowedTransitions = RENTAL_STATUS_TRANSITIONS[rental.status];
+  if (!allowedTransitions || !allowedTransitions.includes(status)) {
+    throw new AppError_default(
+      httpStatus11.BAD_REQUEST,
+      `Cannot update rental status from ${rental.status} to ${status}!`
+    );
+  }
+  const updatedRental = await prisma.rentalOrder.update({
+    where: { id },
+    data: { status },
+    include: {
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      },
+      gearItem: {
+        include: {
+          provider: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          category: true
+        }
+      }
+    }
+  });
+  if (status === "RETURNED") {
+    await prisma.gearItem.update({
+      where: { id: rental.gearItemId },
+      data: {
+        stockQuantity: { increment: 1 },
+        availability: true
+      }
+    });
+  }
+  return updatedRental;
+};
 var getRentalStatsFromDB = async (userId, userRole) => {
   let whereCondition = {};
   if (userRole === "CUSTOMER") {
@@ -1997,6 +2053,7 @@ var rentalService = {
   getRentalByIdFromDB,
   getUserRentalsFromDB,
   cancelRentalFromDB,
+  updateRentalStatusFromDB,
   getRentalStatsFromDB
 };
 
@@ -2082,6 +2139,25 @@ var cancelRental = catchAsync(async (req, res) => {
     data: rental
   });
 });
+var updateRentalStatus = catchAsync(async (req, res) => {
+  if (!req.user) {
+    throw new AppError_default(httpStatus12.UNAUTHORIZED, "You are not authorized!");
+  }
+  const { id } = req.params;
+  const { status } = req.body;
+  const rental = await rentalService.updateRentalStatusFromDB(
+    id,
+    status,
+    req.user.id,
+    req.user.role
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus12.OK,
+    message: "Rental order status updated successfully!",
+    data: rental
+  });
+});
 var getRentalStats = catchAsync(async (req, res) => {
   if (!req.user) {
     throw new AppError_default(httpStatus12.UNAUTHORIZED, "You are not authorized!");
@@ -2100,6 +2176,7 @@ var rentalController = {
   getRentalById,
   getUserRentals,
   cancelRental,
+  updateRentalStatus,
   getRentalStats
 };
 
@@ -2151,6 +2228,7 @@ router5.get("/stats/overview", auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN), r
 router5.get("/my-rentals", auth(Role.CUSTOMER), rentalController.getUserRentals);
 router5.get("/:id", auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN), rentalController.getRentalById);
 router5.patch("/:id/cancel", auth(Role.CUSTOMER), rentalController.cancelRental);
+router5.patch("/:id/status", auth(Role.PROVIDER, Role.ADMIN), validateRequest_default(rentalValidation.updateRentalStatusValidationSchema), rentalController.updateRentalStatus);
 var rentalRoutes = router5;
 
 // src/modules/review/review.route.ts
