@@ -5,6 +5,7 @@ import { sendResponse } from "../../utils/sendResponse";
 import { rentalService } from "./rental.service";
 import { pick } from "../../utils/pick";
 import AppError from "../../errors/AppError";
+import type { RentalOrderStatus } from "../../../generated/prisma/enums";
 
 const createRental = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
@@ -104,6 +105,29 @@ const cancelRental = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const updateRentalStatus = catchAsync(async (req: Request, res: Response) => {
+    if (!req.user) {
+        throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+    }
+
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const rental = await rentalService.updateRentalStatusFromDB(
+        id as string,
+        status as RentalOrderStatus,
+        req.user.id,
+        req.user.role
+    );
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Rental order status updated successfully!",
+        data: rental,
+    });
+});
+
 const getRentalStats = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
         throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
@@ -125,5 +149,6 @@ export const rentalController = {
     getRentalById,
     getUserRentals,
     cancelRental,
+    updateRentalStatus,
     getRentalStats,
 };

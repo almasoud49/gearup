@@ -18,4 +18,6 @@ router.get( '/:id',auth(Role.CUSTOMER, Role.PROVIDER, Role.ADMIN),rentalControll
 
 router.patch('/:id/cancel',auth(Role.CUSTOMER),rentalController.cancelRental);
 
+router.patch('/:id/status',auth(Role.PROVIDER, Role.ADMIN),validateRequest(rentalValidation.updateRentalStatusValidationSchema),rentalController.updateRentalStatus);
+
 export const rentalRoutes = router;

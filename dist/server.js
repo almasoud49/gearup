@@ -475,14 +475,11 @@ import "zod";
 var validateRequest = (schema) => {
   return async (req, res, next) => {
     try {
-      const parsed = await schema.parseAsync({
+      await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params
       });
-      req.body = parsed.body ?? req.body;
-      if (parsed.query) req.query = parsed.query;
-      if (parsed.params) req.params = parsed.params;
       next();
     } catch (error) {
       next(error);
@@ -3901,13 +3898,13 @@ var notFound = (req, res) => {
 
 // src/middlewares/globalErrorHandler.ts
 import httpStatus21 from "http-status";
-import { ZodError as ZodError2 } from "zod";
+import { ZodError } from "zod";
 var globalErrorHandler = (err, req, res, next) => {
   console.log("Error : ", err);
   let statusCode = httpStatus21.INTERNAL_SERVER_ERROR;
   let message = err.message || "Internal Server Error";
   let errorDetails = {};
-  if (err instanceof ZodError2) {
+  if (err instanceof ZodError) {
     statusCode = httpStatus21.BAD_REQUEST;
     message = "Validation Error";
     errorDetails = {

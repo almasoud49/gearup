@@ -7,6 +7,7 @@ import { getPagination, createMeta } from "../../utils/pagination";
 import { validateGear, validateRental} from "../../utils/common";
 import { findUserById } from "../../utils/user";
 import { Prisma } from "../../../generated/prisma/client";
+import type { RentalOrderStatus } from "../../../generated/prisma/enums";
 
 const createRentalIntoDB = async (payload: TRentalOrder) => {
     const { startDate, endDate, gearItemId, customerId } = payload;
@@ -347,6 +348,75 @@ const cancelRentalFromDB = async (id: string, userId: string) => {
     return cancelledRental;
 };
 
+const RENTAL_STATUS_TRANSITIONS: Record<RentalOrderStatus, RentalOrderStatus[]> = {
+    PLACED: ['CONFIRMED'],
+    CONFIRMED: [],
+    PAID: ['PICKED_UP'],
+    PICKED_UP: ['RETURNED'],
+    RETURNED: [],
+    CANCELLED: [],
+};
+
+const updateRentalStatusFromDB = async (
+    id: string,
+    status: RentalOrderStatus,
+    userId: string,
+    userRole: string
+) => {
+    const rental = await validateRental(id);
+
+    if (userRole === 'PROVIDER' && rental.gearItem.providerId !== userId) {
+        throw new AppError(httpStatus.FORBIDDEN, 'You are not authorized to update this rental!');
+    }
+
+    const allowedTransitions = RENTAL_STATUS_TRANSITIONS[rental.status];
+
+    if (!allowedTransitions || !allowedTransitions.includes(status)) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Cannot update rental status from ${rental.status} to ${status}!`
+        );
+    }
+
+    const updatedRental = await prisma.rentalOrder.update({
+        where: { id },
+        data: { status },
+        include: {
+            customer: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+            gearItem: {
+                include: {
+                    provider: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                    category: true,
+                },
+            },
+        },
+    });
+
+    if (status === 'RETURNED') {
+        await prisma.gearItem.update({
+            where: { id: rental.gearItemId },
+            data: {
+                stockQuantity: { increment: 1 },
+                availability: true,
+            },
+        });
+    }
+
+    return updatedRental;
+};
+
 const getRentalStatsFromDB = async (userId: string, userRole: string) => {
     let whereCondition: any = {};
 
@@ -415,5 +485,6 @@ export const rentalService = {
     getRentalByIdFromDB,
     getUserRentalsFromDB,
     cancelRentalFromDB,
+    updateRentalStatusFromDB,
     getRentalStatsFromDB,
 };
